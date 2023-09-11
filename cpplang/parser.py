@@ -1665,6 +1665,23 @@ class Parser(object):
         name = node['name']
         return tree.UsingDecl(name=name)
 
+    @parse_debug
+    def parse_TypeAliasTemplateDecl(self, node) -> tree.TypeAliasTemplateDecl:
+        assert node['kind'] == "TypeAliasTemplateDecl"
+        name = node['name']
+        inner_nodes = self.parse_subnodes(node)
+        template_parameters = []
+        decl = None
+        for inner_node, json_descr in zip(inner_nodes, node['inner']):
+            if isinstance(inner_node, (tree.TemplateTypeParmDecl,
+                                 tree.NonTypeTemplateParmDecl)):
+                template_parameters.append(inner_node)
+            elif isinstance(inner_node, tree.TypeAliasDecl):
+                decl = inner_node
+
+        print("TypeAliasTemplateDecl: {}".format(dict(node)))
+        return tree.TypeAliasTemplateDecl(name=name, template_parameters=template_parameters, decl=decl)
+
     #@parse_debug
     #def parse_NamespaceRef(self, node) -> tree.NamespaceRef:
         #assert node['kind'] == "NamespaceRef"

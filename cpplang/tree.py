@@ -777,6 +777,8 @@ class TypeAliasDecl(Declaration):
 class UsingDecl(Declaration):
     attrs = ("name",)
 
+class TypeAliasTemplateDecl(Declaration):
+    attrs = ("name", "template_arguments", "template_parameters", "decl")
 
 class TypeRef(Node):
     attrs = ("name",)
@@ -788,6 +790,7 @@ class TypeRef(Node):
 
 class ExpressionStmt(Statement):
     attrs = ("expression",)
+
 
 
 class GCCAsmStmt(Statement):

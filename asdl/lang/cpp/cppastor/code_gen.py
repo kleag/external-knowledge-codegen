@@ -704,6 +704,14 @@ class SourceGenerator(ExplicitNodeVisitor):
     def visit_UsingDecl(self, node: tree.UsingDecl):
         self.write("using ", node.name, ";")
 
+    def visit_TypeAliasTemplateDecl(self, node: tree.TypeAliasTemplateDecl):
+        self.write("template<")
+        tparams_str = self.comma_list(node.template_parameters)
+        self.write(tparams_str)
+        self.write(">\n")
+        self.write("using ", node.name, " = ", node.decl, ";")
+
+
     def visit_BuiltinType(self, node: tree.BuiltinType):
         self.write(node.name)
 

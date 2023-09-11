@@ -24,6 +24,7 @@ declaration = AccessSpecDecl(access_spec access_spec)
             | TypeAliasDecl(identifier name, type type)
             | UsingDecl(identifier name)
             | UsingDirectiveDecl(identifier name)
+            | TypeAliasTemplateDecl(template_parameter* template_parameters, identifier name, declaration decl)
             | VarDecl(identifier name, type type, constant? storage_class, constant init_mode, constant? implicit, constant? referenced, expression? init, attribute* attributes, constant? tls)
 
 template_parameter = TemplateTypeParmDecl(identifier name, template_tag tag, template_argument? default)
