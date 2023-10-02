@@ -21,27 +21,35 @@ preprocess_command = [
 module_dir = os.path.dirname(__file__)
 plugin_path = os.path.join(module_dir, "JSONTypeDumper.so")
 
+
 def rebuild_clang_plugin():
     plugin_src = os.path.join(module_dir, "JSONDumpTypes.cpp")
 
     src_mtime = os.path.getmtime(plugin_src)
     try:
         plugin_mtime = os.path.getmtime(plugin_path)
-    except:
+    except Exception:
         plugin_mtime = 0
 
     if src_mtime > plugin_mtime:
+        print(f"(Re)building JSONDumpTypes clang plugin", file=sys.stderr)
         raw_llvm_compile_flags = subprocess.check_output(
                 [shutil.which("llvm-config"), '--cxxflags', '--ldflags'])
         llvm_compile_flags = raw_llvm_compile_flags.split()
         subprocess.check_call([
             shutil.which("clang"),
             plugin_src,
-            "-O0", "-fPIC", "-g",
+            # "-O0", "-fPIC", "-g",
+            "-O2", "-fPIC",
             "-shared",
             "-o", plugin_path] + llvm_compile_flags)
+    else:
+        print(f"No need to (Re)build JSONDumpTypes clang plugin",
+              file=sys.stderr)
+
 
 rebuild_clang_plugin()
+
 
 def parse_debug(method):
     global ENABLE_DEBUG_SUPPORT
@@ -180,7 +188,7 @@ class Parser(object):
                 check=True,
                 cwd=workdir)
         except subprocess.CalledProcessError as e:
-            print(f"While handling {self.filepath},\n")
+            print(f"While handling {self.filepath},\n", file=sys.stderr)
             print(f"Preprocessing error {e.returncode}:\n{e.stderr.decode()}",
                   file=sys.stderr)
             raise
@@ -201,7 +209,7 @@ class Parser(object):
                 check=True,
                 cwd=workdir)
         except subprocess.CalledProcessError as e:
-            print(f"While handling {self.filepath},\n")
+            print(f"While handling {self.filepath},\n", file=sys.stderr)
             print(f"Parsing error {e.returncode}:\n{e.stderr.decode()}",
                   file=sys.stderr)
             print(f"    command was:\n{' '.join(arguments)}", file=sys.stderr)
@@ -235,7 +243,7 @@ class Parser(object):
                 check=True)
         except subprocess.CalledProcessError as e:
             if self.filepath is not None:
-                print(f"While handling {self.filepath},\n")
+                print(f"While handling {self.filepath},\n", file=sys.stderr)
             print(f"Preprocessing error {e.returncode}:\n{e.stderr.decode()}", file=sys.stderr)
             raise
         preprocess_stdout_data = preprocess.stdout
@@ -257,7 +265,7 @@ class Parser(object):
                 check=True)
         except subprocess.CalledProcessError as e:
             if self.filepath is not None:
-                print(f"While handling {self.filepath},\n")
+                print(f"While handling {self.filepath},\n", file=sys.stderr)
             print(f"Parsing error {e.returncode}:\n{e.stderr.decode()}", file=sys.stderr)
             print(f"    command was:\n{' '.join(process_command)}", file=sys.stderr)
             raise
