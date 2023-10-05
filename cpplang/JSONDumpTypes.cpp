@@ -114,11 +114,12 @@ static llvm::json::Object fullType(const ASTContext &Ctx, const Type * Ty) {
     Ret["inner"] = llvm::json::Value(std::move(Inner));
   }
   else if(auto * DependentSizedArrayTy = dyn_cast<DependentSizedArrayType>(Ty)) {
+    if(auto const* Size = DependentSizedArrayTy->getSizeExpr())
     {
-    std::string pretty_buffer;
-    llvm::raw_string_ostream pretty_stream(pretty_buffer);
-    DependentSizedArrayTy->getSizeExpr()->printPretty(pretty_stream, nullptr, PrintingPolicy(Ctx.getLangOpts()));
-    Ret["size_repr"] = pretty_buffer;
+      std::string pretty_buffer;
+      llvm::raw_string_ostream pretty_stream(pretty_buffer);
+      DependentSizedArrayTy->getSizeExpr()->printPretty(pretty_stream, nullptr, PrintingPolicy(Ctx.getLangOpts()));
+      Ret["size_repr"] = pretty_buffer;
     }
     llvm::json::Array Inner;
     Inner.push_back(fullType(Ctx, DependentSizedArrayTy->getElementType()));

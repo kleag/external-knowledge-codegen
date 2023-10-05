@@ -140,7 +140,7 @@ type = AutoType(auto_keyword keyword)
      | DecayedType(type type)
      | DecltypeType(constant repr)
      | DependentNameType(constant nested, constant attr)
-     | DependentSizedArrayType(type type, constant size_repr)
+     | DependentSizedArrayType(type type, constant? size_repr)
      | ElaboratedType(type type, identifier? qualifiers)
      | EnumType(identifier name)
      | FunctionNoProtoType
