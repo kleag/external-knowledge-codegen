@@ -9,16 +9,48 @@ import os
 import re
 import subprocess
 import sys
+import tqdm
+from multiprocessing import Pool
 from typing import (Dict, List, Set, Tuple)
 
 import cppastor
 import cpplang
+import istarmap
 from asdl.lang.cpp.cpp_transition_system import *
 from asdl.hypothesis import *
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
+
+
+class DummyFile(object):
+    file = None
+
+    def __init__(self, file):
+        self.file = file
+
+    def write(self, *args, **kwargs):
+        kwargs['file'] = self.file
+        kwargs['end'] = ''
+
+        # I had to print each argument separately, with kwargs['end'] = ''
+        for i in args:
+            tqdm.write(str(i), **kwargs)
+
+    def __eq__(self, other):
+        return other is self.file
+
+    def flush(self):
+        pass
+
+
+@contextlib.contextmanager
+def nostdout():
+    save_stdout = sys.stdout
+    sys.stdout = DummyFile(sys.stdout)
+    yield
+    sys.stdout = save_stdout
 
 
 @contextlib.contextmanager
@@ -30,10 +62,11 @@ def pushd(new_dir):
     finally:
         os.chdir(old_dir)
 
+
 # read in the grammar specification of Cpp SE8, defined in ASDL
 asdl_text = open('cpp_asdl.simplified.txt').read()
 grammar = ASDLGrammar.from_text(asdl_text)
-# print(grammar, file=sys.stderr)
+# print(grammar)
 
 # initialize the Cpp transition parser
 parser = CppTransitionSystem(grammar)
@@ -119,8 +152,7 @@ def simplify(code: str) -> str:
 def common_prefix(str1: str, str2: str) -> None:
     common_prefix = os.path.commonprefix([str1, str2])
     percent_ok = int(float(len(common_prefix))*100/len(str1))
-    print(f"Common prefix end: {common_prefix[-100:]} ({percent_ok}%)",
-          file=sys.stderr)
+    print(f"Common prefix end: {common_prefix[-100:]} ({percent_ok}%)")
 
 
 def preprocess_code(cpp_code):
@@ -196,7 +228,7 @@ def roundtrip(cpp_code: str = None, filepath: str = None,
         #try:
         src3 = code_from_hyp(asdl_ast)
         #except Exception as e:
-            #print(f"{e}", file=sys.stderr)
+            #print(f"{e}")
             #return False
         src3 = removeComments(src3)
         simp3 = simplify(src3)
@@ -204,33 +236,26 @@ def roundtrip(cpp_code: str = None, filepath: str = None,
                (check_hypothesis and (simp3 != simp1)))):
         if simp0 != simp1:
             cprint(bcolors.BLUE,
-                   f"))))))) Original Cpp code      :\n{src0}\n(((((((\n",
-                   file=sys.stderr)
+                   f"))))))) Original Cpp code      :\n{src0}\n(((((((\n")
             cprint(bcolors.CYAN,
                    f"}}}}}}}}}}}}}} Cpp AST                :\n{src1}\n"
-                   f"{{{{{{{{{{{{{{\n",
-                   file=sys.stderr)
+                   f"{{{{{{{{{{{{{{\n")
             common_prefix(simp0, simp1)
         elif simp1 != simp2:
             cprint(bcolors.CYAN,
                    f"}}}}}}}}}}}}}} Cpp AST                :\n{src1}"
-                   f"\n{{{{{{{{{{{{{{\n",
-                   file=sys.stderr)
+                   f"\n{{{{{{{{{{{{{{\n")
             cprint(bcolors.GREEN,
-                   f"]]]]]]] Cpp AST from ASDL      :\n{src2}\n[[[[[[[\n",
-                   file=sys.stderr)
+                   f"]]]]]]] Cpp AST from ASDL      :\n{src2}\n[[[[[[[\n")
             common_prefix(simp1, simp2)
         elif check_hypothesis:
             cprint(bcolors.BLUE,
-                   f"))))))) Original Cpp code      :\n{src0}\n(((((((\n",
-                   file=sys.stderr)
+                   f"))))))) Original Cpp code      :\n{src0}\n(((((((\n")
             cprint(bcolors.CYAN,
                    f"}}}}}}}}}}}}}} Cpp AST                :\n{src1}\n"
-                   f"{{{{{{{{{{{{{{\n",
-                   file=sys.stderr)
+                   f"{{{{{{{{{{{{{{\n")
             cprint(bcolors.MAGENTA,
-                   f">>>>>>> Cpp AST from hyp       :\n{src3}\n<<<<<<<\n",
-                   file=sys.stderr)
+                   f">>>>>>> Cpp AST from hyp       :\n{src3}\n<<<<<<<\n")
             common_prefix(simp1, simp3)
         # if fail_on_error:
             # raise Exception("Test failed")
@@ -284,10 +309,9 @@ def check_filepath(filepath: str,
     if (filepath.endswith(".cpp") or filepath.endswith(".cc") or filepath.endswith(".h")
             or filepath.endswith(".i") or filepath.endswith(".ii")
             or filepath.endswith(".hpp")):
-        cprint(bcolors.ENDC,
-               f"\n−−−−−−−−−−\nTesting Cpp file {number:5d}/{total:5d} "
-               f"{bcolors.MAGENTA}{filepath}",
-               file=sys.stderr)
+        # cprint(bcolors.ENDC,
+        #        f"\n−−−−−−−−−−\nTesting Cpp file {number:5d}/{total:5d} "
+        #        f"{bcolors.MAGENTA}{filepath}")
         with open(filepath, "r") as f:
             try:
                 cpp = f.read()
@@ -295,56 +319,73 @@ def check_filepath(filepath: str,
                                  check_hypothesis=check_hypothesis,
                                  fail_on_error=fail_on_error, member=member,
                                  skip_checks=skip_checks):
-                    cprint(bcolors.RED,
-                           f"**Warn**{bcolors.ENDC} Test failed for "
-                           f"file: {bcolors.MAGENTA}{filepath}",
-                           file=sys.stderr)
+                    # cprint(bcolors.RED,
+                    #        f"**Warn**{bcolors.ENDC} Test failed for "
+                    #        f"file: {bcolors.MAGENTA}{filepath}")
                     return False
                 else:
-                    cprint(bcolors.GREEN,
-                           f"Success for file: {bcolors.MAGENTA}{filepath}",
-                           file=sys.stderr)
+                    # cprint(bcolors.GREEN,
+                    #        f"Success for file: {bcolors.MAGENTA}{filepath}")
                     return True
             except UnicodeDecodeError:
                 cprint(bcolors.RED,
                        f"Error: Cannot decode file as UTF-8. Ignoring: "
-                       f"{filepath}", file=sys.stderr)
+                       f"{filepath}")
                 return False
     else:
         return None
+
+
+def check_compile_command_db(compile_command: Dict[str, str],
+                              check_hypothesis: bool = False,
+                              skip_checks: bool = False,
+                              fail_on_error=False):
+    cprint(bcolors.ENDC,
+            f"\n−−−−−−−−−−\nTesting Cpp file "
+            f"{bcolors.MAGENTA}{compile_command}")
+    try:
+        if not roundtrip(compile_command=compile_command,
+                            check_hypothesis=check_hypothesis,
+                            skip_checks=skip_checks,
+                            fail_on_error=fail_on_error,
+                            member=False):
+            cprint(bcolors.RED,
+                    f"**Warn**{bcolors.ENDC} Test failed for "
+                    f"file: {bcolors.MAGENTA}{compile_command}")
+            if fail_on_error:
+                return False
+        # else:
+        #     cprint(bcolors.GREEN,
+        #             f"Success for file: {bcolors.MAGENTA}{compile_command}")
+        #     # return True
+    except UnicodeDecodeError:
+        cprint(bcolors.RED,
+                f"Error: Cannot decode file as UTF-8. Ignoring: "
+                f"{compile_command}")
+        return False
+    return True
 
 
 def check_compile_commands_db(compile_commands: List[Dict[str, str]],
                               check_hypothesis: bool = False,
                               skip_checks: bool = False,
                               fail_on_error=False):
-    for number, compile_command in enumerate(compile_commands, start=1):
-        cprint(bcolors.ENDC,
-               f"\n−−−−−−−−−−\nTesting Cpp file {number:5d}/{len(compile_commands):5d} "
-               f"{bcolors.MAGENTA}{compile_command}",
-               file=sys.stderr)
-        try:
-            if not roundtrip(compile_command=compile_command,
-                             check_hypothesis=check_hypothesis,
-                             skip_checks=skip_checks,
-                             fail_on_error=fail_on_error,
-                             member=False):
-                cprint(bcolors.RED,
-                       f"**Warn**{bcolors.ENDC} Test failed for "
-                       f"file: {bcolors.MAGENTA}{compile_command}",
-                       file=sys.stderr)
-                if fail_on_error:
-                    return False
-            else:
-                cprint(bcolors.GREEN,
-                       f"Success for file: {bcolors.MAGENTA}{compile_command}",
-                       file=sys.stderr)
-                # return True
-        except UnicodeDecodeError:
-            cprint(bcolors.RED,
-                   f"Error: Cannot decode file as UTF-8. Ignoring: "
-                   f"{compile_command}", file=sys.stderr)
-            return False
+    # for number, compile_command in enumerate(compile_commands, start=1):
+    #     cprint(bcolors.ENDC,
+    #            f"\n−−−−−−−−−−\nTesting Cpp file {number:5d}/{len(compile_commands):5d} "
+    #            f"{bcolors.MAGENTA}{compile_command}")
+    #     res = check_compile_command_db(compile_command, check_hypothesis, skip_checks, fail_on_error)
+    #     if fail_on_error and not res:
+    #         return False
+    # return True
+    commands = [(command, check_hypothesis, skip_checks, fail_on_error)
+                for command in compile_commands]
+    with Pool() as pool:
+        for _ in tqdm.tqdm(pool.istarmap(check_compile_command_db, commands),
+                           total=len(commands)):
+            pass
+        pool.close()
+        pool.join()
     return True
 
 

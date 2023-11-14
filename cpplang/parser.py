@@ -14,12 +14,25 @@ from . import tree
 
 ENABLE_DEBUG_SUPPORT = False
 
+LLVM_VERSION = "14"
+
+clang = shutil.which(f"clang-{LLVM_VERSION}")
+if not clang:
+    print(f"clang-{LLVM_VERSION} not found.", file=sys.stderr)
+    raise RuntimeError(f"clang-{LLVM_VERSION} not found.")
+
+llvm_config = shutil.which(f"llvm-config-{LLVM_VERSION}")
+if not llvm_config:
+    print(f"llvm-config-{LLVM_VERSION} not found.", file=sys.stderr)
+    raise RuntimeError(f"llvm-config-{LLVM_VERSION} not found.")
+
 preprocess_command = [
-    shutil.which("clang"), "-x", "c++", "-std=c++14",
+    clang, "-x", "c++", "-std=c++14",
     "-E", "-"]
 
 module_dir = os.path.dirname(__file__)
 plugin_path = os.path.join(module_dir, "JSONTypeDumper.so")
+
 
 
 def rebuild_clang_plugin():
@@ -34,13 +47,15 @@ def rebuild_clang_plugin():
     if src_mtime > plugin_mtime:
         print(f"(Re)building JSONDumpTypes clang plugin", file=sys.stderr)
         raw_llvm_compile_flags = subprocess.check_output(
-                [shutil.which("llvm-config"), '--cxxflags', '--ldflags'])
+                [llvm_config, '--cxxflags', '--ldflags'])
         llvm_compile_flags = raw_llvm_compile_flags.split()
         subprocess.check_call([
-            shutil.which("clang"),
+            clang,
             plugin_src,
-            # "-O0", "-fPIC", "-g",
-            "-O2", "-fPIC",
+            # "-O0", "-g", "-fno-omit-frame-pointer", "-fno-optimize-sibling-calls",
+            # "-O1", "-g", "-fsanitize=address", "-fno-omit-frame-pointer", "-fno-optimize-sibling-calls",
+            "-O2",
+            "-fPIC",
             "-shared",
             "-o", plugin_path] + llvm_compile_flags)
     else:
@@ -170,7 +185,7 @@ class Parser(object):
             arguments[1:1] =["-x", "c"]
         elif arguments[0].endswith("c++"):
             arguments[1:1] =["-x", "c++"]
-        arguments[0] = shutil.which("clang")
+        arguments[0] = clang
         # remove -o /foo/bar.o from command. We will read the standard output stream
         if "-o" in arguments:
             i = arguments.index("-o")
@@ -180,6 +195,9 @@ class Parser(object):
         filepath = arguments[-1]
         preprocess_command = copy.copy(arguments)
         preprocess_command.insert(-1, "-E")
+        if ENABLE_DEBUG_SUPPORT:
+            print(f"\npreprocess_command:\n{' '.join(preprocess_command)}\n",
+                  file=sys.stderr)
         try:
             self.filepath = filepath
             preprocess = subprocess.run(
@@ -199,8 +217,8 @@ class Parser(object):
         preprocess_stderr_data = preprocess.stderr
         arguments.pop()
         arguments.extend([f"-fplugin={plugin_path}", "-fsyntax-only", "-"])
-        # if ENABLE_DEBUG_SUPPORT:
-        #     print(f"process_command:\n{' '.join(process_command)}\n\n", file=sys.stderr)
+        if ENABLE_DEBUG_SUPPORT:
+            print(f"process_command:\n{' '.join(arguments)}\n\n", file=sys.stderr)
         try:
             p = subprocess.run(
                 arguments,
@@ -215,8 +233,8 @@ class Parser(object):
             print(f"    command was:\n{' '.join(arguments)}", file=sys.stderr)
             raise
         stdout_data = p.stdout
-        # if ENABLE_DEBUG_SUPPORT:
-        #     print(f"stdout_data:\n{stdout_data.decode()}\n\n", file=sys.stderr)
+        if ENABLE_DEBUG_SUPPORT:
+            print(f"stdout_data:\n{stdout_data.decode()}\n\n", file=sys.stderr)
         stderr_data = p.stdout
         # print(stderr_data.decode(), file=sys.stderr)
         try:
@@ -406,8 +424,10 @@ class Parser(object):
         subnodes = node.get(key)
         if subnodes is None:
             return []
-        assert len(subnodes) > 0
+        if ENABLE_DEBUG_SUPPORT:
+            assert len(subnodes) > 0
         result = [self.parse_node(c) for c in subnodes]
+        result = [el for el in result if el is not None]
         if keep_empty:
             return result
         else:
@@ -464,7 +484,7 @@ class Parser(object):
     def abort_visit(node):  # XXX: self?
         msg = (f"No defined parse handler for clang node of type `{node['kind']}`.\n"
                f"please define `parse_{node['kind']}` in cpplang/parser.py.")
-        raise AttributeError(msg)
+        raise NotImplementedError(msg)
 
     @parse_debug
     def parse_node(self, node, abort=abort_visit) -> tree.Node:
@@ -489,7 +509,20 @@ class Parser(object):
                 or len(self.stack) > 0):
             self.stack.append(node)
             parse_method = getattr(self, "parse_"+node['kind'], abort)
-            result = parse_method(node)
+            try:
+                result = parse_method(node)
+            except NotImplementedError as e:
+                print(f"Catching NotImplementedError in parse_node: {e}",
+                      file=sys.stderr)
+                result = None
+                if ENABLE_DEBUG_SUPPORT:
+                    raise
+            except ValueError as e:
+                print(f"Catching ValueError in parse_node: {e}",
+                      file=sys.stderr)
+                result = None
+                if ENABLE_DEBUG_SUPPORT:
+                    raise
             self.stack.pop()
             return result
         elif ((len(self.stack) == 0 and 'loc' in node
@@ -502,7 +535,20 @@ class Parser(object):
                 or len(self.stack) > 0):
             self.stack.append(node)
             parse_method = getattr(self, "parse_"+node['kind'], abort)
-            result = parse_method(node)
+            try:
+                result = parse_method(node)
+            except NotImplementedError as e:
+                print(f"Catching NotImplementedError in parse_node: {e}",
+                      file=sys.stderr)
+                result = None
+                if ENABLE_DEBUG_SUPPORT:
+                    raise
+            except ValueError as e:
+                print(f"Catching ValueError in parse_node: {e}",
+                      file=sys.stderr)
+                result = None
+                if ENABLE_DEBUG_SUPPORT:
+                    raise
             self.stack.pop()
             return result
         else:
@@ -742,6 +788,9 @@ class Parser(object):
             name = baseInit["qualType"]
             args = self.parse_subnodes(node)
 
+        if not anyInit and not baseInit:
+            raise NotImplementedError("parse_CXXCtorInitializer not any nor base")
+
         return tree.CXXCtorInitializer(name=name, args=args)
 
     @parse_debug
@@ -971,7 +1020,11 @@ class Parser(object):
     @parse_debug
     def parse_CXXCatchStmt(self, node) -> tree.CXXCatchStmt:
         assert node["kind"] == "CXXCatchStmt"
-        decl, body = self.parse_subnodes(node, keep_empty=True)
+        subnodes = self.parse_subnodes(node, keep_empty=True)
+        if len(subnodes) == 1:
+            return tree.CXXCatchStmt(decl=None, body=subnodes[0])
+        else:
+            decl, body = subnodes
         return tree.CXXCatchStmt(decl= decl or None,
                                  body=body)
 
@@ -989,8 +1042,12 @@ class Parser(object):
 
         if len(subnodes) == 1:
             true_body, false_body = subnodes[0], None
-        else:
+        elif len(subnodes) == 2:
             true_body, false_body = subnodes
+        else:
+            print(f"IfStmt has more than 2 subnodes: {subnodes}",
+                  file=sys.stderr)
+            true_body, false_body, *others = subnodes
         return tree.IfStmt(cond=cond,
                            true_body=self.as_statement(true_body),
                            false_body=false_body and self.as_statement(false_body))
@@ -1012,20 +1069,25 @@ class Parser(object):
     @parse_debug
     def parse_ForStmt(self, node) -> tree.ForStmt:
         assert node['kind'] == "ForStmt"
-        init, cond_decl, cond, inc, body = self.parse_subnodes(node, keep_empty=True)
+        subnodes = self.parse_subnodes(node, keep_empty=True)
+        if len(subnodes) == 5:
+            init, cond_decl, cond, inc, body = subnodes
 
-        if isinstance(init, tree.Expression):
-            init = tree.DeclsOrExpr(expr=init, decls=None)
-        elif isinstance(init, tree.DeclStmt):
-            init = tree.DeclsOrExpr(expr=None, decls=init.decls)
-        if cond_decl:
-            assert isinstance(cond_decl, tree.DeclStmt)
-            decl, = cond_decl.decls
-            cond = tree.DeclOrExpr(expr=None, decl=decl)
-        elif cond:
-            assert isinstance(cond, tree.Expression)
-            cond = tree.DeclOrExpr(expr=cond, decl=None)
-
+            if isinstance(init, tree.Expression):
+                init = tree.DeclsOrExpr(expr=init, decls=None)
+            elif isinstance(init, tree.DeclStmt):
+                init = tree.DeclsOrExpr(expr=None, decls=init.decls)
+            if cond_decl:
+                assert isinstance(cond_decl, tree.DeclStmt)
+                decl, = cond_decl.decls
+                cond = tree.DeclOrExpr(expr=None, decl=decl)
+            elif cond:
+                assert isinstance(cond, tree.Expression)
+                cond = tree.DeclOrExpr(expr=cond, decl=None)
+        else:
+            print(f"ForStmt with number of subnodes != 5: {subnodes}",
+                  file=sys.stderr)
+            raise NotImplementedError(f"ForStmt with number of subnodes != 5: {subnodes}")
         return tree.ForStmt(
                 init=init,
                 cond=cond,
@@ -1448,7 +1510,7 @@ class Parser(object):
         inner_nodes = self.parse_subnodes(node)
 
         if 'init' in node:
-            init = inner_nodes.pop()
+            init = inner_nodes.pop() if inner_nodes else None
             init_mode = node['init']
         else:
             init = None
@@ -1856,8 +1918,12 @@ class Parser(object):
     def parse_ImplicitCastExpr(self, node) -> tree.ImplicitCastExpr:
         assert node['kind'] == "ImplicitCastExpr"
         type_ = self.parse_node(self.type_informations[node['id']])
-        expr, = self.parse_subnodes(node)
-        return tree.ImplicitCastExpr(type=type_, expr=expr)
+        subnodes = self.parse_subnodes(node)
+        if len(subnodes) > 0:
+            expr, = self.parse_subnodes(node)
+            return tree.ImplicitCastExpr(type=type_, expr=expr)
+        else:
+            raise NotImplementedError
 
     @parse_debug
     def parse_CXXDefaultArgExpr(self, node) -> None:
@@ -1871,7 +1937,7 @@ class Parser(object):
         var_type = self.parse_node(self.type_informations[node['id']])
         inner_nodes = self.parse_subnodes(node)
 
-        type_qualifier = "mutable" if node.get('mutable') else None # TODO: add support for const and volatile
+        type_qualifier = "mutable" if node.get('mutable') else None  # TODO: add support for const and volatile
 
         if node.get('isBitfield'):
             bitwidth = inner_nodes.pop(0)

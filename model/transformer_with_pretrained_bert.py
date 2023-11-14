@@ -21,7 +21,7 @@ class TransformerWithBertModel(TransformerModel):
     <https://www.aclweb.org/anthology/D19-5603/>`_.
 
     Args:
-        encoder (TransformerEncoder): the encoder
+        encoder (TransformerWithBertEncoder): the encoder
         decoder (TransformerDecoder): the decoder
 
     The Transformer model provides the following named architectures and

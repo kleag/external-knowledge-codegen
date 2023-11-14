@@ -31,6 +31,8 @@ from .node_util import ExplicitNodeVisitor
 from .string_repr import pretty_string, string_triplequote_repr
 from .source_repr import pretty_source
 
+ENABLE_DEBUG_SUPPORT = False
+
 
 def to_source(node, indent_with=" " * 4, add_line_information=False,
               pretty_string=pretty_string, pretty_source=pretty_source):
@@ -123,7 +125,13 @@ class SourceGenerator(ExplicitNodeVisitor):
             for item in params:
                 assert item is not None
                 if isinstance(item, Node):
-                    visit(item)
+                    try:
+                        visit(item)
+                    except NotImplementedError as e:
+                        print(f"Catched NotImplementedError from visit in write",
+                              file=sys.stderr)
+                        if ENABLE_DEBUG_SUPPORT:
+                            raise
                 elif callable(item):
                     item()
                 elif item == "\n":
@@ -526,7 +534,7 @@ class SourceGenerator(ExplicitNodeVisitor):
                     self.write("(", node.init, ")")
                 elif node.init_mode == 'list':
                     self.write("{", node.init, "}")
-                else:
+                elif node.init:
                     self.write(" = ", node.init)
 
     def visit_ExprStmt(self, node: tree.ExprStmt):
@@ -1281,7 +1289,14 @@ class SourceGenerator(ExplicitNodeVisitor):
     def anonymize_decl(self, decl):
         assert isinstance(decl, tree.VarDecl)
         new_decl = copy.copy(decl)
-        new_decl.type = self.anonymize_type(decl.type)
+        try:
+            new_decl.type = self.anonymize_type(decl.type)
+        except NotImplementedError as e:
+            print(f"Handling NotImplementedError in anonymize_decl: {e}",
+                  file=sys.stderr)
+            new_decl.type = ""
+            if ENABLE_DEBUG_SUPPORT:
+                raise
         return new_decl
 
     def anonymize_types(self, decls):
