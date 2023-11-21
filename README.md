@@ -55,7 +55,7 @@ You can find the preprocessed NL-code pairs at `apidocs/python-docs.jsonl`.
 
 However, if you prefer to process the API documents from scratch, you need to first download the official Python source code from [here](https://www.python.org/downloads/source/), in this paper, we use the documentation from Python 3.7.5.
 extract everything into `apidocs/Python-3.7.5`.
-Then `cd` into that directory, and follow the [instructions](https://github.com/python/cpython/tree/master/Doc) to build the HTML version of the Python documentation.
+Then `cd` into `apidocs/Python-3.7.5/Doc`, and follow the [instructions](https://github.com/python/cpython/tree/master/Doc) to build the HTML version of the Python documentation.
 Basically it's `make venv` followed by `make html`.
 
 After this, please check `apidocs/Python-3.7.5/Doc/build/html/library` directory to see if the generated HTML library documentations are there. Yay!
