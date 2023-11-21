@@ -1,11 +1,14 @@
-astor==0.7.1
+#astor==0.7.1
+astor==0.8.1
+bcolor
 clang==14.0
 colorama
 javalang
 libclang
 nltk
 six
-torch==1.13.1
+#torch==1.13.1
+torch
 transformers
 #fairseq from patched sources
 xgboost

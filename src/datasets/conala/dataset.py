@@ -1,4 +1,6 @@
 import argparse
+import bcolors
+import errno
 import json
 import os
 import pickle
@@ -15,7 +17,7 @@ from components.vocab import Vocab, VocabEntry
 from datasets.conala.evaluator import ConalaEvaluator
 from datasets.conala.util import *
 
-assert astor.__version__ == '0.7.1'
+assert astor.__version__ == '0.8.1'
 
 def preprocess_conala_dataset(train_file,
                               test_file,
@@ -184,8 +186,8 @@ def preprocess_dataset(file_path, transition_system, name='train',
                     valid_continuating_productions = transition_system.get_valid_continuating_productions(hyp)
                     if action.production not in valid_continuating_productions and hyp.frontier_node:
                         raise Exception(f"{bcolors.BLUE}{action.production}"
-                                        f"{bcolors.ENDC} should be in {bcolors.GREEN}"
-                                        f"{grammar[hyp.frontier_field.type] if hyp.frontier_field else ''}"
+                                        f"{bcolors.ENDC} should be in {bcolors.OK}"
+                                        f"{transition_system.grammar[hyp.frontier_field.type] if hyp.frontier_field else ''}"
                                         f"{bcolors.ENDC}")
                         assert action.production in valid_continuating_productions
                 p_t = -1
@@ -282,7 +284,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--mined', type=str, help='Path to mined file')
     arg_parser.add_argument('--grammar', type=str,
                             help='Path to language grammar',
-                            default='asdl/lang/py3/py3_asdl.simplified.txt')
+                            default='src/asdl/lang/py3/py3_asdl.simplified.txt')
     arg_parser.add_argument('--out_dir', type=str, default='data/conala',
                             help='Path to output file')
     arg_parser.add_argument('--freq', type=int, default=3,
