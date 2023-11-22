@@ -50,7 +50,6 @@ class ConalaEvaluator(Evaluator):
                     example, 'reference_code_tokens',
                     tokenize_for_bleu_eval(example.meta['example_dict']['snippet']))
 
-        print(decode_results, file=sys.stderr)
         if not decode_results[0] or not hasattr(decode_results[0][0], 'decanonical_code_tokens'):
             for i, example in enumerate(examples):
                 hyp_list = decode_results[i]

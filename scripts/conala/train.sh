@@ -23,7 +23,7 @@ type_embed_size=64
 lr=0.001
 lr_decay=0.5
 batch_size=64
-max_epoch=80
+max_epoch=4 # was 80
 beam_size=15
 lstm='lstm'  # lstm
 encoder='lstm' # lstm or bert
@@ -69,6 +69,9 @@ python -u exp.py \
     --beam_size ${beam_size} \
     --log_every 50 \
     --save_decode_to ${decodes_dir}/${model_name}.decode \
-    --save_to ${model_dir}/${model_name} 2>&1 | tee ${logs_dir}/${model_name}.log
+    --save_to ${model_dir}/${model_name} \
+    2>&1 | tee ${logs_dir}/${model_name}.log
+#     --verbose \
 
+echo "Trainin done. Now testing."
 . scripts/conala/test.sh ${model_dir}/${model_name}.bin 2>&1 | tee -a ${logs_dir}/${model_name}.log

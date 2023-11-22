@@ -28,10 +28,11 @@ def decode(examples, model, args, verbose=False, **kwargs):
             got_code = False
             try:
                 code = model.transition_system.ast_to_surface_code(hyp.tree)
-                try:
-                    java_ast = parse_member_declaration(code)
-                except JavaSyntaxError as e:
-                    continue
+                if args.lang == "java":
+                    try:
+                        java_ast = parse_member_declaration(code)
+                    except JavaSyntaxError as e:
+                        continue
                 hyp.code = code
                 got_code = True
                 decoded_hyps.append(hyp)

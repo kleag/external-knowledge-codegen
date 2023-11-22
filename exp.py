@@ -171,7 +171,8 @@ def train(args):
                 eval_start = time.time()
                 eval_results = evaluation.evaluate(
                   dev_set.examples, model, evaluator, args,
-                  verbose=False, eval_top_pred_only=args.eval_top_pred_only)
+                  verbose=args.verbose,
+                  eval_top_pred_only=args.eval_top_pred_only)
                 dev_score = eval_results[evaluator.default_metric]
 
                 print(f'[Epoch {epoch}] evaluate details: {eval_results}, '
@@ -601,8 +602,9 @@ def train_reranker_and_test(args):
             print('Save Reranker to %s' % args.save_to, file=sys.stderr)
             reranker.save(args.save_to)
 
-    test_score_with_rerank = reranker.compute_rerank_performance(test_set.examples, test_decode_results, verbose=True,
-                                                                 evaluator=evaluator, args=args)
+    test_score_with_rerank = reranker.compute_rerank_performance(
+        test_set.examples, test_decode_results, verbose=args.verbose,
+        evaluator=evaluator, args=args)
 
     print('Test Eval Results After Reranking', file=sys.stderr)
     print(test_score_with_rerank, file=sys.stderr)
@@ -612,7 +614,7 @@ def train_reranker_and_test(args):
 if __name__ == '__main__':
     arg_parser = init_arg_parser()
     args = init_config()
-    print(args, file=sys.stderr)
+    # print(args, file=sys.stderr)
     if args.mode == 'train':
         train(args)
     elif args.mode in ('train_reconstructor', 'train_paraphrase_identifier'):

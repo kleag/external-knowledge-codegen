@@ -79,7 +79,11 @@ def asdl_ast_to_python_ast(asdl_ast_node, grammar):
             # for primitive node, note that primitive field may have `None` value
             if field.value is not None:
                 if field.type.name == 'object':
-                    if '.' in field.value or 'e' in field.value:
+                    if field.value == "True":
+                        field_value = True
+                    elif field.value == "False":
+                        field_value = False
+                    elif '.' in field.value or 'e' in field.value:
                         field_value = float(field.value)
                     elif isint(field.value):
                         field_value = int(field.value)
