@@ -45,10 +45,6 @@ Some key dependencies and their versions are:
 One of the most important steps presented in the paper is the external knowledge/resources used for pre-training the code generation model.
 We will show how we obtain the StackOverflow mined data as well as the Python API documentation and the preprocessing steps.
 
-### Mined StackOverflow Pairs
-Download [conala-corpus-v1.1.zip](http://www.phontron.com/download/conala-corpus-v1.1.zip) and unzip the content into `data/conala/`.
-Make sure you have `conala-(mined|train|test).jsonl` in that directory.
-
 ### Python Standard Library API Documentation
 We provide our processed API documents into our data format which is the same as the aforementioned Conala dataset.
 You can find the preprocessed NL-code pairs at `apidocs/python-docs.jsonl`.
@@ -84,6 +80,10 @@ Check out `apidocs/index_es.py` for indexing the API documents, and `apidocs/ret
 For this part, our underlying model is [TranX](https://github.com/pcyin/tranx) for code generation, and the code is modified and integrated in this repo.
 
 Our paper's training strategy is basically 3-step: pretrain on mined + API data, finetune on [CoNaLa](https://conala-corpus.github.io/) dataset, and rerank.
+
+### Mined StackOverflow Pairs
+Download [conala-corpus-v1.1.zip](http://www.phontron.com/download/conala-corpus-v1.1.zip) and unzip the content into `data/conala/`.
+Make sure you have `conala-(mined|train|test).jsonl` in that directory.
 
 ### Preprocess all the data into binarized dataset and vocab.
 All related operations are in `datasets/conala/dataset.py`.
