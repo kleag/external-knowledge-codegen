@@ -91,8 +91,7 @@ All related operations are in `datasets/conala/dataset.py`.
 For our best performing experiment, with is mined (top 100K) + API (dist. resampled w/ code, k = 1 and t = 2), run the following to create the dataset:
 
 ```
-mkdir data/conala
-python datasets/conala/dataset.py --pretrain path/to/conala-mined.jsonl --topk 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl
+python datasets/conala/dataset.py --pretrain data/conala/conala-mined.jsonl --topk 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl
 ```
 
 By default things should be preprocessed and saved to `data/conala`. Check out those `.bin` files.
