@@ -73,5 +73,6 @@ python -u exp.py \
     2>&1 | tee ${logs_dir}/${model_name}.log
 #     --verbose \
 
+echo
 echo "Trainin done. Now testing."
 . scripts/conala/test.sh ${model_dir}/${model_name}.bin 2>&1 | tee -a ${logs_dir}/${model_name}.log
