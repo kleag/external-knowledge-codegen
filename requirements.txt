@@ -1,9 +1,9 @@
-#astor==0.7.1
-astor==0.8.1
-bcolor
+astor==0.7.1
+#astor==0.8.1
+#bcolor
 clang==14.0
 colorama
-javalang
+#javalang
 libclang
 nltk
 six

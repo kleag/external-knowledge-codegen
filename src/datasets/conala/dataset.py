@@ -1,5 +1,4 @@
 import argparse
-import bcolors
 import errno
 import json
 import os
@@ -17,7 +16,8 @@ from components.vocab import Vocab, VocabEntry
 from datasets.conala.evaluator import ConalaEvaluator
 from datasets.conala.util import *
 
-assert astor.__version__ == '0.8.1'
+# assert astor.__version__ == '0.8.1'
+assert astor.__version__ == '0.7.1'
 
 def preprocess_conala_dataset(train_file,
                               test_file,
@@ -163,8 +163,8 @@ def preprocess_dataset(file_path, transition_system, name='train',
                                               rewritten=rewritten)
 
             snippet = example_dict['canonical_snippet']
-            if debug:
-                print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
+            # if debug:
+            #     print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
 
             lang_ast = ast.parse(snippet)
             canonical_code = astor.to_source(lang_ast).strip()
@@ -302,6 +302,8 @@ if __name__ == '__main__':
                             help='Max number of dev examples to use')
     arg_parser.add_argument('--num_mined', type=int, default=0,
                             help='First k number from mined file')
+    arg_parser.add_argument('-d', '--debug', action='store_true',
+                            help='Run in debug mode if set.')
     args = arg_parser.parse_args()
 
     # the json files can be downloaded from http://conala-corpus.github.io
@@ -316,4 +318,5 @@ if __name__ == '__main__':
                               num_mined=args.num_mined,
                               num_dev=args.num_dev,
                               out_dir=args.out_dir,
-                              rewritten=args.no_rewritten)
+                              rewritten=args.no_rewritten,
+                              debug=args.debug)

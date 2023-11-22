@@ -10,7 +10,7 @@ from asdl.hypothesis import *
 import astor
 
 # read in the grammar specification of Python 2.7, defined in ASDL
-asdl_text = open('asdl/lang/py3/py3_asdl.simplified.txt').read()
+asdl_text = open('src/asdl/lang/py3/py3_asdl.simplified.txt').read()
 grammar = ASDLGrammar.from_text(asdl_text)
 
 py_code = """pandas.read('file.csv', nrows=100)"""
