@@ -26,6 +26,7 @@ batch_size=64
 max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm
+encoder='lstm' # lstm or bert
 lr_decay_after_epoch=15
 model_name=conala.${lstm}.hidden${hidden_size}.embed${embed_size}.action${action_embed_size}.field${field_embed_size}.type${type_embed_size}.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).glorot.par_state.seed${seed}
 
@@ -38,6 +39,7 @@ echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
 python -u exp.py \
     ${cuda} \
+    --data_path ${data_dir} \
     --seed ${seed} \
     --mode train \
     --batch_size ${batch_size} \
@@ -48,6 +50,7 @@ python -u exp.py \
     --dev_file ${dev_file} \
     --vocab ${vocab} \
     --lstm ${lstm} \
+    --encoder ${encoder} \
     --no_parent_field_type_embed \
     --no_parent_production_embed \
     --hidden_size ${hidden_size} \

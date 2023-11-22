@@ -105,7 +105,7 @@ class Parser(nn.Module):
             self.encoder = nn.LSTM(args.embed_size, int(args.hidden_size / 2),
                                    bidirectional=True)
         else:
-            raise ValueError(f"Unknown encoder type {args.lstm}")
+            raise ValueError(f"Unknown encoder type {args.encoder}")
 
         input_dim = args.action_embed_size  # previous action
         # frontier info
@@ -208,31 +208,17 @@ class Parser(nn.Module):
             src_sents_var = src_sents_var * mask + (1 - mask) * self.vocab.source.unk_id
 
         src_token_embed = self.src_embed(src_sents_var)
-        # packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
+
+        if type(self.encoder)  == TransformerWithBertEncoder:
+            src_encodings, (last_state, last_cell) = self.encoder(src_token_embed, src_sents_len)
+        elif type(self.encoder) == nn.LSTM:
+            packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
+            src_encodings, (last_state, last_cell) = self.encoder(packed_src_token_embed)
+        else:
+            raise ValueError(f"Unknown encoder type {type(self.encoder)}")
 
         # src_encodings: (tgt_query_len, batch_size, hidden_size)
-        """
-        Args:
-            src_tokens (LongTensor): tokens in the source language of shape
-                `(batch, src_len)`
-            src_lengths (torch.LongTensor): lengths of each source sentence of
-                shape `(batch)`
-            return_all_hiddens (bool, optional): also return all of the
-                intermediate hidden states (default: False).
 
-        Returns:
-            namedtuple:
-                - **encoder_out** (Tensor): the last encoder layer's output of
-                  shape `(src_len, batch, embed_dim)`
-                - **encoder_padding_mask** (ByteTensor): the positions of
-                  padding elements of shape `(batch, src_len)`
-                - **encoder_embedding** (Tensor): the (scaled) embedding lookup
-                  of shape `(batch, src_len, embed_dim)`
-                - **encoder_states** (List[Tensor]): all intermediate
-                  hidden states of shape `(src_len, batch, embed_dim)`.
-                  Only populated if *return_all_hiddens* is True.
-        """
-        src_encodings, (last_state, last_cell) = self.encoder(src_token_embed, src_sents_len)
         src_encodings, _ = pad_packed_sequence(src_encodings)
         # src_encodings: (batch_size, tgt_query_len, hidden_size)
         src_encodings = src_encodings.permute(1, 0, 2)

@@ -1,4 +1,8 @@
+import ast
+import astor
 import csv
+import numpy as np
+import sys
 
 from components.evaluator import Evaluator
 from common.registerable import Registrable
@@ -7,9 +11,6 @@ from .util import decanonicalize_code
 from .conala_eval import tokenize_for_bleu_eval
 from .bleu_score import compute_bleu
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-import numpy as np
-import ast
-import astor
 
 
 @Registrable.register('conala_evaluator')
@@ -45,9 +46,12 @@ class ConalaEvaluator(Evaluator):
         # speed up, cache tokenization results
         if not hasattr(examples[0], 'reference_code_tokens'):
             for example in examples:
-                setattr(example, 'reference_code_tokens', tokenize_for_bleu_eval(example.meta['example_dict']['snippet']))
+                setattr(
+                    example, 'reference_code_tokens',
+                    tokenize_for_bleu_eval(example.meta['example_dict']['snippet']))
 
-        if not hasattr(decode_results[0][0], 'decanonical_code_tokens'):
+        print(decode_results, file=sys.stderr)
+        if not decode_results[0] or not hasattr(decode_results[0][0], 'decanonical_code_tokens'):
             for i, example in enumerate(examples):
                 hyp_list = decode_results[i]
                 # here we prune any hypothesis that throws an error when converting back to the decanonical code!
