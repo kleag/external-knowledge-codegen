@@ -32,7 +32,7 @@ python -u exp.py \
     --mode train \
     --batch_size 10 \
     --evaluator concode_evaluator \
-    --asdl_file asdl/lang/py3/py3_asdl.simplified.txt \
+    --asdl_file src/asdl/lang/py3/py3_asdl.simplified.txt \
     --transition_system python3 \
     --train_file ${finetune_file} \
     --dev_file ${dev_file} \

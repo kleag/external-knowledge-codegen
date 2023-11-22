@@ -34,7 +34,7 @@ python -u exp.py \
     --mode rerank \
     --batch_size ${batch_size} \
     --evaluator conala_evaluator \
-    --asdl_file asdl/lang/py3/py3_asdl.simplified.txt \
+    --asdl_file src/asdl/lang/py3/py3_asdl.simplified.txt \
     --transition_system python3 \
     --load_reranker saved_models/conala/reranker.conala.vocab.src_freq3.code_freq3.mined_100000.intent_count100k_topk1_temp5.bin \
     --save_decode_to decodes/conala/${model_name}.best \
