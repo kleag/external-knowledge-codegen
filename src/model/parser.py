@@ -215,7 +215,11 @@ class Parser(nn.Module):
         src_token_embed = self.src_embed(src_sents_var)
 
         if type(self.encoder)  == TransformerWithBertEncoder:
-            src_encodings, (last_state, last_cell) = self.encoder(src_token_embed, src_sents_len)
+            # src_encodings, (last_state, last_cell) = self.encoder(src_token_embed, src_sents_len)
+            (encoder_out, encoder_padding_mask,
+             encoder_embedding, encoder_states) = self.encoder(src_token_embed,
+                                                               src_sents_len)
+            breakpoint()
         elif type(self.encoder) == nn.LSTM:
             packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
             src_encodings, (last_state, last_cell) = self.encoder(packed_src_token_embed)

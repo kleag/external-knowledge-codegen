@@ -133,7 +133,7 @@ class TransformerWithBertEncoder(FairseqEncoder):
                 print(f"src_tokens.size: {src_tokens.size()}")
                 print(f"src_lengths: {src_lengths}")
                 X = self.bert_model(inputs_embeds=src_tokens,
-                                    attention_mask=attention_mask,
+                                    attention_mask=None,
                                     token_type_ids=None)
                 print(f"type(X): {type(X)}")
                 x, _, layer_outputs = X
