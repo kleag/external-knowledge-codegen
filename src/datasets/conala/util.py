@@ -8,8 +8,11 @@ import ast
 import astor
 import nltk
 
+from transformers import BertTokenizer
+
 
 QUOTED_TOKEN_RE = re.compile(r"(?P<quote>''|[`'\"])(?P<string>.*?)(?P=quote)")
+BERT_TOKENIZER = BertTokenizer.from_pretrained('bert-base-uncased')
 
 
 def compare_ast(node1, node2):
@@ -29,10 +32,37 @@ def compare_ast(node1, node2):
         return node1 == node2
 
 
-def tokenize_intent(intent):
-    lower_intent = intent.lower()
-    tokens = nltk.word_tokenize(lower_intent)
+def tokenize_intent(intent: str, tokenizer: str):
+    """
+    Tokenize the input string.
 
+    Parameters:
+    intent: str: the text intent
+    tokenizer: str: the kind of tokenizer
+
+    Returns:
+    """
+    if tokenizer == 'nltk':
+        lower_intent = intent.lower()
+        tokens = nltk.word_tokenize(lower_intent)
+    elif tokenizer == 'bert':
+        encoded_input = BERT_TOKENIZER(
+            text=intent,
+            add_special_tokens=True,
+            padding="max_length",
+            max_length=256,
+            truncation=True,
+            return_attention_mask=False
+        )
+        breakpoint()
+        tokens = encoded_input["input_ids"]
+    elif tokenizer == 'spacy':
+        raise NotImplementedError("Spacy tokenization not implemented")
+    elif tokenizer == 'lima':
+        raise NotImplementedError("Lima tokenization not implemented")
+    else:
+        raise RuntimeError(f"tokenize_intent: unknown tokenizer: {tokenizer}")
+    # breakpoint()
     return tokens
 
 
@@ -43,6 +73,15 @@ def infer_slot_type(quote, value):
 
 
 def canonicalize_intent(intent):
+    """
+    Replace occurrences of strings and variable names with canonicalized values
+    (var_1, var_1, …, str_1, str_2, …).
+
+    Returns:
+    The intent with canonicalized values and a map allowing to retrieve the
+    original values.
+
+    """
     # handle the following special case: quote is `''`
     marked_token_matches = QUOTED_TOKEN_RE.findall(intent)
 
@@ -65,11 +104,11 @@ def canonicalize_intent(intent):
         slot_type = infer_slot_type(quote, value)
 
         if slot_type == 'var':
-            slot_name = 'var_%d' % var_id
+            slot_name = f'var_{var_id}'
             var_id += 1
             slot_type = 'var'
         else:
-            slot_name = 'str_%d' % str_id
+            slot_name = f'str_{str_id}'
             str_id += 1
             slot_type = 'str'
 

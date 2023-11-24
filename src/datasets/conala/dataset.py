@@ -1,4 +1,6 @@
 import argparse
+import ast
+import astor
 import errno
 import json
 import os
@@ -8,32 +10,39 @@ import sys
 import numpy as np
 
 from asdl.hypothesis import *
-from asdl.lang.py3.py3_transition_system import python_ast_to_asdl_ast, asdl_ast_to_python_ast, Python3TransitionSystem
+from asdl.lang.py3.py3_transition_system import (
+    python_ast_to_asdl_ast,
+    asdl_ast_to_python_ast,
+    Python3TransitionSystem)
 from asdl.transition_system import *
 from components.action_info import get_action_infos
 from components.dataset import Example
 from components.vocab import Vocab, VocabEntry
 from datasets.conala.evaluator import ConalaEvaluator
-from datasets.conala.util import *
+from datasets.conala.util import (compare_ast,
+                                  canonicalize_intent, canonicalize_code,
+                                  decanonicalize_code, tokenize_intent)
 
 # assert astor.__version__ == '0.8.1'
 assert astor.__version__ == '0.7.1'
 
-def preprocess_conala_dataset(train_file,
-                              test_file,
-                              grammar_file,
-                              src_freq=3,
-                              code_freq=3,
-                              rewritten=True,
-                              mined_data_file=None,
-                              api_data_file=None,
-                              vocab_size=20000,
-                              num_examples=0,
-                              num_mined=0,
-                              num_dev=200,
-                              debug=False,
-                              start_at=0,
-                              out_dir='data/conala'):
+
+def preprocess_conala_dataset(train_file: str,
+                              test_file: str,
+                              grammar_file: str,
+                              tokenizer: str,
+                              src_freq: int = 3,
+                              code_freq: int = 3,
+                              rewritten: bool = True,
+                              mined_data_file: str = None,
+                              api_data_file: str = None,
+                              vocab_size: int = 20000,
+                              num_examples: int = 0,
+                              num_mined: int = 0,
+                              num_dev: int = 200,
+                              debug: bool = False,
+                              start_at: int = 0,
+                              out_dir: str = 'data/conala'):
     np.random.seed(1234)
     try:
         os.makedirs(out_dir)
@@ -48,6 +57,7 @@ def preprocess_conala_dataset(train_file,
     print('process gold training data...')
     train_examples = preprocess_dataset(train_file,
                                         name='train',
+                                        tokenizer=tokenizer,
                                         transition_system=transition_system,
                                         num_examples=num_examples,
                                         debug=debug,
@@ -67,6 +77,7 @@ def preprocess_conala_dataset(train_file,
         print("from file: ", mined_data_file)
         mined_examples = preprocess_dataset(mined_data_file,
                                             name='mined',
+                                            tokenizer=tokenizer,
                                             transition_system=transition_system,
                                             num_examples=num_mined,
                                             debug=debug,
@@ -77,7 +88,9 @@ def preprocess_conala_dataset(train_file,
     if api_data_file:
         print("use api docs from file: ", api_data_file)
         name = os.path.splitext(os.path.basename(api_data_file))[0]
-        api_examples = preprocess_dataset(api_data_file, name='api',
+        api_examples = preprocess_dataset(api_data_file,
+                                          name='api',
+                                          tokenizer=tokenizer,
                                           transition_system=transition_system,
                                           debug=debug,
                                           start_at=start_at,
@@ -94,7 +107,9 @@ def preprocess_conala_dataset(train_file,
     print(f'{len(dev_examples)} dev instances', file=sys.stderr)
 
     print('process testing data...')
-    test_examples = preprocess_dataset(test_file, name='test',
+    test_examples = preprocess_dataset(test_file,
+                                       name='test',
+                                       tokenizer=tokenizer,
                                        transition_system=transition_system,
                                        rewritten=rewritten)
     print(f'{len(test_examples)} testing instances', file=sys.stderr)
@@ -134,10 +149,14 @@ def preprocess_conala_dataset(train_file,
     pickle.dump(vocab, open(os.path.join(out_dir, vocab_name), 'wb'))
 
 
-def preprocess_dataset(file_path, transition_system, name='train',
-                       num_examples=None, debug=False,
-                       start_at=0,
-                       rewritten=True):
+def preprocess_dataset(file_path: str,
+                       transition_system: Python3TransitionSystem,
+                       tokenizer: str,
+                       name: str = 'train',
+                       num_examples: int = None,
+                       debug: bool = False,
+                       start_at: int = 0,
+                       rewritten: bool = True):
     try:
         dataset = json.load(open(file_path))
     except Exception as e:
@@ -160,6 +179,7 @@ def preprocess_dataset(file_path, transition_system, name='train',
                   end='\r', file=sys.stderr)
         try:
             example_dict = preprocess_example(example_json,
+                                              tokenizer,
                                               rewritten=rewritten)
 
             snippet = example_dict['canonical_snippet']
@@ -237,7 +257,7 @@ def preprocess_dataset(file_path, transition_system, name='train',
             f.write(f"Original Utterance: {example.meta['example_dict']['intent']}\n")
         f.write(f"Original Snippet: {example.meta['example_dict']['snippet']}\n")
         f.write(f"\n")
-        f.write(f"Utterance: {' '.join(example.src_sent)}\n")
+        f.write(f"Utterance: {' '.join([str(t) for t in example.src_sent])}\n")
         f.write(f"Snippet: {example.tgt_code}\n")
         f.write(f"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 
@@ -246,7 +266,9 @@ def preprocess_dataset(file_path, transition_system, name='train',
     return examples
 
 
-def preprocess_example(example_json, rewritten=True):
+def preprocess_example(example_json: str,
+                       tokenizer: str,
+                       rewritten: bool = True):
     intent = example_json['intent']
     if rewritten and 'rewritten_intent' in example_json:
         rewritten_intent = example_json['rewritten_intent']
@@ -260,7 +282,7 @@ def preprocess_example(example_json, rewritten=True):
     canonical_intent, slot_map = canonicalize_intent(rewritten_intent
                                                      if rewritten else intent)
     canonical_snippet = canonicalize_code(snippet, slot_map)
-    intent_tokens = tokenize_intent(canonical_intent)
+    intent_tokens = tokenize_intent(canonical_intent, tokenizer)
     decanonical_snippet = decanonicalize_code(canonical_snippet, slot_map)
 
     reconstructed_snippet = astor.to_source(ast.parse(snippet)).strip()
@@ -296,6 +318,9 @@ if __name__ == '__main__':
     arg_parser.add_argument('-r', '--no_rewritten', action='store_false',
                             help='If set, will not use the manually rewritten '
                                  'intents.')
+    arg_parser.add_argument('--tokenizer', type=str, required=True,
+                            choices=['nltk', 'bert', 'spacy', 'lima'],
+                            help='The tokenizer to use.')
     arg_parser.add_argument('--num_examples', type=int, default=0,
                             help='Max number of examples to use in any set')
     arg_parser.add_argument('--num_dev', type=int, default=200,
@@ -306,6 +331,7 @@ if __name__ == '__main__':
                             help='Run in debug mode if set.')
     args = arg_parser.parse_args()
 
+    print(f"tokenizer: {args.tokenizer}", file=sys.stderr)
     # the json files can be downloaded from http://conala-corpus.github.io
     preprocess_conala_dataset(train_file=args.train,
                               test_file=args.test,
@@ -319,4 +345,5 @@ if __name__ == '__main__':
                               num_dev=args.num_dev,
                               out_dir=args.out_dir,
                               rewritten=args.no_rewritten,
+                              tokenizer=args.tokenizer,
                               debug=args.debug)

@@ -4,7 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from transformers import BertTokenizer
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import (Dataset, DataLoader)
+
 
 class TransformerModel(nn.Module):
     def __init__(self, vocab_size, embedding_size, num_heads, hidden_size, num_layers,
@@ -16,7 +17,8 @@ class TransformerModel(nn.Module):
             TransformerEncoderLayer(hidden_size, num_heads, hidden_size, dropout),
             num_layers
         )
-        self.lstm_decoder = LSTMDecoder(hidden_size, hidden_size, num_lstm_layers, dropout)
+        self.lstm_decoder = LSTMDecoder(hidden_size, hidden_size,
+                                        num_lstm_layers, dropout)
         self.fc = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, input):
@@ -41,7 +43,8 @@ class BertEncoder(nn.Module):
 class LSTMDecoder(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, dropout):
         super(LSTMDecoder, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, dropout=dropout)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers,
+                            dropout=dropout)
 
     def forward(self, input):
         output, _ = self.lstm(input)
@@ -88,7 +91,8 @@ def translate_text_to_code(text):
     # Pass the encoded text through the model
     output = model(encoded_text)
 
-    # Convert the model output to code (e.g., by selecting the most probable tokens)
+    # Convert the model output to code (e.g., by selecting the most probable
+    # tokens)
     code = convert_output_to_code(output)
 
     return code
@@ -98,12 +102,14 @@ def convert_output_to_code(output):
     # Convert the model's output to code based on your specific requirements
     # For example, you can select the most probable token at each timestep
 
-    _, predicted_indices = output.max(dim=2)  # Get the index of the most probable token at each timestep
+    # Get the index of the most probable token at each timestep
+    _, predicted_indices = output.max(dim=2)
 
     # Convert the predicted indices back into code
     code = []
     for indices in predicted_indices:
-        code_tokens = [index_to_token[index.item()] for index in indices]  # Convert token indices to actual tokens
+        # Convert token indices to actual tokens
+        code_tokens = [index_to_token[index.item()] for index in indices]
         code.append(" ".join(code_tokens))
 
     return code
@@ -126,22 +132,24 @@ def encode_text_and_code(batch_text, batch_code):
 
     return encoded_texts, encoded_codes
 
+
 # Instantiate the BERT tokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-vocab_size=50000
-embedding_size=768
-num_heads=4
-hidden_size=256
-num_layers=6
-num_lstm_layers=2
-dropout=0.9
-learning_rate=0.01
-batch_size=10
-num_epochs=10
+vocab_size = 50000
+embedding_size = 768
+num_heads = 4
+hidden_size = 256
+num_layers = 6
+num_lstm_layers = 2
+dropout = 0.9
+learning_rate = 0.01
+batch_size = 10
+num_epochs = 10
 
 # Define your model
-model = TransformerModel(vocab_size, embedding_size, num_heads, hidden_size, num_layers, num_lstm_layers, dropout)
+model = TransformerModel(vocab_size, embedding_size, num_heads,
+                         hidden_size, num_layers, num_lstm_layers, dropout)
 
 # Define your loss function
 criterion = nn.CrossEntropyLoss()
@@ -149,7 +157,8 @@ criterion = nn.CrossEntropyLoss()
 # Define your optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-corpus_file = "/home/gael/Projets/Decoder-ICT-16/WP2/external-knowledge-codegen/data/concode/concode_train.json"
+corpus_file = ("/home/gael/Projets/Decoder-ICT-16/WP2/"
+               "external-knowledge-codegen/data/concode/concode_train.json")
 # Prepare your training data
 dataset = TranslationDataset(corpus_file)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)

@@ -19,7 +19,7 @@ lr_decay=0.5
 batch_size=32
 max_epoch=80
 beam_size=15
-encoder=bert
+encoder="lstm" # lstm or bert
 lstm='lstm'  # lstm
 lr_decay_after_epoch=15
 model_name=concode.${lstm}.hidden${hidden_size}.embed${embed_size}.action${action_embed_size}.field${field_embed_size}.type${type_embed_size}.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).glorot.par_state.seed${seed}
@@ -29,13 +29,13 @@ mkdir -p logs/concode
 echo commit hash: `git rev-parse HEAD` > logs/concode/${model_name}.log
 
 #     --cuda \
-python -u  -m pdb exp.py \
+python -u exp.py \
     --lang java \
     --seed ${seed} \
     --mode train \
     --batch_size ${batch_size} \
     --evaluator concode_evaluator \
-    --asdl_file asdl/lang/java/java_asdl.simplified.txt \
+    --asdl_file src/asdl/lang/java/java_asdl.simplified.txt \
     --transition_system java \
     --train_file ${train_file} \
     --dev_file ${dev_file} \

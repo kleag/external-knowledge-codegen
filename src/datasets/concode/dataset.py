@@ -404,7 +404,7 @@ if __name__ == '__main__':
                             help='Path to apidocs file')
     arg_parser.add_argument('--grammar', type=str,
                             help='Path to grammar file',
-                            default='asdl/lang/java/java_asdl.simplified.txt')
+                            default='src/asdl/lang/java/java_asdl.simplified.txt')
     arg_parser.add_argument('--num_examples', type=int, default=0,
                             help='Max number of examples to use in any set')
     arg_parser.add_argument('--num_dev', type=int, default=200,

@@ -61,29 +61,45 @@ def init_arg_parser():
                             help='name of evaluator class to use')
 
     # ### Model configuration ####
-    arg_parser.add_argument('--encoder', choices=['lstm', 'bert'], default='lstm',
+    arg_parser.add_argument('--encoder', choices=['lstm', 'bert'],
+                            default='lstm',
                             help='Type of encoder used')
     arg_parser.add_argument('--lstm', choices=['lstm'], default='lstm',
-                            help='Type of LSTM used, currently only standard LSTM cell is supported')
+                            help=('Type of LSTM used, currently only standard '
+                                  'LSTM cell is supported'))
 
     # Embedding sizes
-    arg_parser.add_argument('--encoder_embed_dim', default=768, type=int, help='Size of encoder embeddings')
-    arg_parser.add_argument('--embed_size', default=128, type=int, help='Size of word embeddings')
-    arg_parser.add_argument('--action_embed_size', default=128, type=int, help='Size of ApplyRule/GenToken action embeddings')
-    arg_parser.add_argument('--field_embed_size', default=64, type=int, help='Embedding size of ASDL fields')
-    arg_parser.add_argument('--type_embed_size', default=64, type=int, help='Embeddings ASDL types')
+    arg_parser.add_argument('--encoder_embed_dim', default=768, type=int,
+                            help='Size of encoder embeddings')
+    arg_parser.add_argument('--embed_size', default=128, type=int,
+                            help='Size of word embeddings')
+    arg_parser.add_argument('--action_embed_size', default=128, type=int,
+                            help='Size of ApplyRule/GenToken action embeddings')
+    arg_parser.add_argument('--field_embed_size', default=64, type=int,
+                            help='Embedding size of ASDL fields')
+    arg_parser.add_argument('--type_embed_size', default=64, type=int,
+                            help='Embeddings ASDL types')
 
     # Hidden sizes
-    arg_parser.add_argument('--hidden_size', default=256, type=int, help='Size of LSTM hidden states')
-    arg_parser.add_argument('--ptrnet_hidden_dim', default=32, type=int, help='Hidden dimension used in pointer network')
-    arg_parser.add_argument('--att_vec_size', default=256, type=int, help='size of attentional vector')
+    arg_parser.add_argument('--hidden_size', default=256, type=int,
+                            help='Size of LSTM hidden states')
+    arg_parser.add_argument('--ptrnet_hidden_dim', default=32, type=int,
+                            help='Hidden dimension used in pointer network')
+    arg_parser.add_argument('--att_vec_size', default=256, type=int,
+                            help='size of attentional vector')
 
     # readout layer
-    arg_parser.add_argument('--no_query_vec_to_action_map', default=False, action='store_true',
-                            help='Do not use additional linear layer to transform the attentional vector for computing action probabilities')
-    arg_parser.add_argument('--readout', default='identity', choices=['identity', 'non_linear'],
-                            help='Type of activation if using additional linear layer')
-    arg_parser.add_argument('--query_vec_to_action_diff_map', default=False, action='store_true',
+    arg_parser.add_argument('--no_query_vec_to_action_map', default=False,
+                            action='store_true',
+                            help=('Do not use additional linear layer to '
+                                  'transform the attentional vector for '
+                                  'computing action probabilities'))
+    arg_parser.add_argument('--readout', default='identity',
+                            choices=['identity', 'non_linear'],
+                            help=('Type of activation if using additional '
+                                  'linear layer'))
+    arg_parser.add_argument('--query_vec_to_action_diff_map', default=False,
+                            action='store_true',
                             help='Use different linear mapping ')
 
     # supervised attention
@@ -102,32 +118,50 @@ def init_arg_parser():
     arg_parser.add_argument('--no_input_feed', default=False, action='store_true', help='Do not use input feeding in decoder LSTM')
     arg_parser.add_argument('--no_copy', default=False, action='store_true', help='Do not use copy mechanism')
 
-    #### Training ####
-    arg_parser.add_argument('--bert_model', type=str, help='Path to the BERT model to use')
-    arg_parser.add_argument('--data_path', type=str, help='Path of the serialized vocabulary')
-    arg_parser.add_argument('--vocab', type=str, help='Path of the serialized vocabulary')
-    arg_parser.add_argument('--glove_embed_path', default=None, type=str, help='Path to pretrained Glove mebedding')
+    # ### Training ### #
+    arg_parser.add_argument('--bert_model', type=str,
+                            default='bert-base-uncased',
+                            help='Path to the BERT model to use')
+    arg_parser.add_argument('--data_path', type=str,
+                            help='Path of the serialized vocabulary')
+    arg_parser.add_argument('--vocab', type=str,
+                            help='Path of the serialized vocabulary')
+    arg_parser.add_argument('--glove_embed_path', default=None, type=str,
+                            help='Path to pretrained Glove mebedding')
 
-    arg_parser.add_argument('--train_file', type=str, help='path to the training target file')
-    arg_parser.add_argument('--dev_file', type=str, help='path to the dev source file')
-    arg_parser.add_argument('--pretrain', type=str, help='path to the pretrained model file')
+    arg_parser.add_argument('--train_file', type=str,
+                            help='path to the training target file')
+    arg_parser.add_argument('--dev_file', type=str,
+                            help='path to the dev source file')
+    arg_parser.add_argument('--pretrain', type=str,
+                            help='path to the pretrained model file')
 
-    arg_parser.add_argument('--batch_size', default=10, type=int, help='Batch size')
-    arg_parser.add_argument('--dropout', default=0., type=float, help='Dropout rate')
-    arg_parser.add_argument('--word_dropout', default=0., type=float, help='Word dropout rate')
-    arg_parser.add_argument('--decoder_word_dropout', default=0.3, type=float, help='Word dropout rate on decoder')
-    arg_parser.add_argument('--primitive_token_label_smoothing', default=0.0, type=float,
-                            help='Apply label smoothing when predicting primitive tokens')
-    arg_parser.add_argument('--src_token_label_smoothing', default=0.0, type=float,
-                            help='Apply label smoothing in reconstruction model when predicting source tokens')
+    arg_parser.add_argument('--batch_size', default=10, type=int,
+                            help='Batch size')
+    arg_parser.add_argument('--dropout', default=0., type=float,
+                            help='Dropout rate')
+    arg_parser.add_argument('--word_dropout', default=0., type=float,
+                            help='Word dropout rate')
+    arg_parser.add_argument('--decoder_word_dropout', default=0.3, type=float,
+                            help='Word dropout rate on decoder')
+    arg_parser.add_argument(
+        '--primitive_token_label_smoothing', default=0.0, type=float,
+        help='Apply label smoothing when predicting primitive tokens')
+    arg_parser.add_argument(
+        '--src_token_label_smoothing', default=0.0, type=float,
+        help=('Apply label smoothing in reconstruction model when '
+              'predicting source tokens'))
 
-    arg_parser.add_argument('--negative_sample_type', default='best', type=str, choices=['best', 'sample', 'all'])
+    arg_parser.add_argument('--negative_sample_type', default='best', type=str,
+                            choices=['best', 'sample', 'all'])
 
     # training schedule details
     arg_parser.add_argument('--valid_metric', default='acc', choices=['acc'],
                             help='Metric used for validation')
-    arg_parser.add_argument('--valid_every_epoch', default=1, type=int, help='Perform validation every x epoch')
-    arg_parser.add_argument('--log_every', default=10, type=int, help='Log training statistics every n iterations')
+    arg_parser.add_argument('--valid_every_epoch', default=1, type=int,
+                            help='Perform validation every x epoch')
+    arg_parser.add_argument('--log_every', default=10, type=int,
+                            help='Log training statistics every n iterations')
 
     arg_parser.add_argument('--save_to', default='model', type=str, help='Save trained model to')
     arg_parser.add_argument('--save_all_models', default=False, action='store_true', help='Save all intermediate checkpoints')

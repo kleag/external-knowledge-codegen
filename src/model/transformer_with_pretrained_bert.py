@@ -81,9 +81,11 @@ class TransformerWithBertEncoder(FairseqEncoder):
         self.register_buffer("version", torch.Tensor([3]))
 
         self.padding_idx = embed_tokens.padding_idx
-        self.layer_wise_attention = getattr(args, "layer_wise_attention", False)
+        self.layer_wise_attention = getattr(args, "layer_wise_attention",
+                                            False)
 
         self.fine_tuning = args.fine_tuning
+        assert args.bert_model
         self.bert_model = BertModel.from_pretrained(
             args.bert_model, return_dict=False, output_hidden_states=True
         )
@@ -130,7 +132,9 @@ class TransformerWithBertEncoder(FairseqEncoder):
                 attention_mask = src_tokens.ne(self.padding_idx).long()
                 print(f"src_tokens.size: {src_tokens.size()}")
                 print(f"src_lengths: {src_lengths}")
-                X = self.bert_model(input_ids=src_tokens, attention_mask=attention_mask)
+                X = self.bert_model(inputs_embeds=src_tokens,
+                                    attention_mask=attention_mask,
+                                    token_type_ids=None)
                 print(f"type(X): {type(X)}")
                 x, _, layer_outputs = X
                 # print(x,type(x),'not finetuning')
@@ -198,7 +202,8 @@ class TransformerWithBertEncoder(FairseqEncoder):
             )
         if encoder_out.encoder_states is not None:
             for idx, state in enumerate(encoder_out.encoder_states):
-                encoder_out.encoder_states[idx] = state.index_select(1, new_order)
+                encoder_out.encoder_states[idx] = state.index_select(1,
+                                                                     new_order)
         return encoder_out
 
 

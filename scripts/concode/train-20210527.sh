@@ -34,7 +34,7 @@ python -u exp.py \
     --mode train \
     --batch_size ${batch_size} \
     --evaluator concode_evaluator \
-    --asdl_file asdl/lang/java/java_asdl.simplified.txt \
+    --asdl_file src/asdl/lang/java/java_asdl.simplified.txt \
     --transition_system java \
     --train_file ${train_file} \
     --dev_file ${dev_file} \

@@ -3,10 +3,10 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-logs_dir="logs/conala/rewritten"
-model_dir="saved_models/conala/rewritten"
-decodes_dir="decodes/conala/rewritten"
-data_dir="data/conala/rewritten"
+logs_dir="logs/conala"
+model_dir="saved_models/conala"
+decodes_dir="decodes/conala"
+data_dir="data/conala"
 
 cuda=""
 # cuda="--cuda"
@@ -23,10 +23,10 @@ type_embed_size=64
 lr=0.001
 lr_decay=0.5
 batch_size=64
-max_epoch=4 # was 80
+max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm
-encoder='lstm' # lstm or bert
+encoder='bert' # lstm or bert
 lr_decay_after_epoch=15
 model_name=conala.${lstm}.hidden${hidden_size}.embed${embed_size}.action${action_embed_size}.field${field_embed_size}.type${type_embed_size}.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).glorot.par_state.seed${seed}
 
@@ -37,7 +37,7 @@ install -d ${decodes_dir}
 echo "**** Writing results to ${logs_dir}/${model_name}.log ****"
 echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
-python -u exp.py \
+python -u -m pdb exp.py \
     ${cuda} \
     --data_path ${data_dir} \
     --seed ${seed} \

@@ -190,15 +190,20 @@ class Parser(nn.Module):
 
     def encode(self, src_sents_var, src_sents_len):
         """Encode the input natural language utterance
+        Takes token ids, compute their embeddings and pass them through the
+        LSTM (or BERT encoder)
 
         Args:
-            src_sents_var: a variable of shape (src_sent_len, batch_size), representing word ids of the input
-            src_sents_len: a list of lengths of input source sentences, sorted by descending order
+            src_sents_var: a variable of shape (src_sent_len, batch_size),
+            representing word ids of the input
+            src_sents_len: a list of lengths of input source sentences, sorted
+            by descending order
 
         Returns:
-            src_encodings: source encodings of shape (batch_size, src_sent_len, hidden_size * 2)
-            last_state, last_cell: the last hidden state and cell state of the encoder,
-                                   of shape (batch_size, hidden_size)
+            src_encodings: source encodings of shape (batch_size, src_sent_len,
+            hidden_size * 2)
+            last_state, last_cell: the last hidden state and cell state of the
+            encoder, of shape (batch_size, hidden_size)
         """
 
         # (tgt_query_len, batch_size, embed_size)
@@ -256,8 +261,8 @@ class Parser(nn.Module):
             last_state, last_cell: the last hidden state and cell state of the encoder,
                                    of shape (batch_size, hidden_size)
         """
-        breakpoint()
-        src_token_embed = self.bert_encode_input_text(src_sents_var)
+        src_token_embed = self.bert_encode_input_text(src_sents_var,
+                                                      src_sents_len)
         # packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
 
         # src_encodings: (tgt_query_len, batch_size, hidden_size)
@@ -310,18 +315,21 @@ class Parser(nn.Module):
         output: score for each training example: Variable(batch_size)
         """
 
-        batch = Batch(examples, self.grammar, self.vocab, copy=self.args.no_copy is False, cuda=self.args.cuda)
+        batch = Batch(examples, self.grammar, self.vocab,
+                      copy=self.args.no_copy is False, cuda=self.args.cuda)
 
         # src_encodings: (batch_size, src_sent_len, hidden_size * 2)
         # (last_state, last_cell, dec_init_vec): (batch_size, hidden_size)
-        if self.args.encoder == 'bert':
-            src_encodings, (last_state, last_cell) = self.bert_encode(
-                batch.src_sents_var, batch.src_sents_len)
-        elif self.args.encoder == 'lstm':
-            src_encodings, (last_state, last_cell) = self.encode(batch.src_sents_var,
-                                                                 batch.src_sents_len)
-        else:
-            raise RuntimeError(f"Unknown uncoder: {self.args.encoder}")
+        src_encodings, (last_state, last_cell) = self.encode(
+            batch.src_sents_var, batch.src_sents_len)
+        # if self.args.encoder == 'bert':
+        #     src_encodings, (last_state, last_cell) = self.bert_encode(
+        #         batch.src_sents, batch.src_sents_len)
+        # elif self.args.encoder == 'lstm':
+        #     src_encodings, (last_state, last_cell) = self.encode(
+        #         batch.src_sents_var, batch.src_sents_len)
+        # else:
+        #     raise RuntimeError(f"Unknown uncoder: {self.args.encoder}")
         dec_init_vec = self.init_decoder_state(last_state, last_cell)
 
         # query vectors are sufficient statistics used to compute action probabilities
