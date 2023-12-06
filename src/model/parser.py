@@ -30,7 +30,7 @@ from .transformer_with_pretrained_bert import TransformerWithBertEncoder
 from fairseq import options, utils
 import fairseq
 from transformers import BertTokenizer
-
+import pdb
 
 def Embedding(num_embeddings, embedding_dim, padding_idx):
     m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
@@ -215,7 +215,7 @@ class Parser(nn.Module):
         src_token_embed = self.src_embed(src_sents_var)
 
         if type(self.encoder)  == TransformerWithBertEncoder:
-            src_encodings, (last_state, last_cell) = self.encoder(src_token_embed, src_sents_len)
+            src_encodings = self.encoder(src_token_embed, src_sents_len)
         elif type(self.encoder) == nn.LSTM:
             packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
             src_encodings, (last_state, last_cell) = self.encoder(packed_src_token_embed)
@@ -224,15 +224,16 @@ class Parser(nn.Module):
 
         # src_encodings: (tgt_query_len, batch_size, hidden_size)
 
-        src_encodings, _ = pad_packed_sequence(src_encodings)
+        # src_encodings = pad_packed_sequence(src_encodings)
         # src_encodings: (batch_size, tgt_query_len, hidden_size)
-        src_encodings = src_encodings.permute(1, 0, 2)
+        # src_encodings = src_encodings.permute(1, 0, 2)
 
         # (batch_size, hidden_size * 2)
-        last_state = torch.cat([last_state[0], last_state[1]], 1)
-        last_cell = torch.cat([last_cell[0], last_cell[1]], 1)
+        # last_state = torch.cat([last_state[0], last_state[1]], 1)
+        # last_cell = torch.cat([last_cell[0], last_cell[1]], 1)
 
-        return src_encodings, (last_state, last_cell)
+        return src_encodings
+    
 
     # Encode input text using BERT tokenizer
     def bert_encode_input_text(self, text, max_length):

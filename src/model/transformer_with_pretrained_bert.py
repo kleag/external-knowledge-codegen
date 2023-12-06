@@ -123,25 +123,18 @@ class TransformerWithBertEncoder(FairseqEncoder):
         """
         if self.layer_wise_attention:
             return_all_hiddens = True
-
         x = None
         # print(2)
         if not self.fine_tuning:
             with torch.no_grad():
                 encoder_padding_mask = src_tokens.eq(self.padding_idx)
-                attention_mask = src_tokens.ne(self.padding_idx).long()
-                print(f"src_tokens.size: {src_tokens.size()}")
-                print(f"src_lengths: {src_lengths}")
+                attention_mask = src_tokens.ne(self.padding_idx).long()[..., -1]
                 X = self.bert_model(inputs_embeds=src_tokens,
                                     attention_mask=attention_mask,
                                     token_type_ids=None)
-                print(f"type(X): {type(X)}")
                 x, _, layer_outputs = X
-                # print(x,type(x),'not finetuning')
                 x = x.transpose(0, 1).detach()
-                # print(x.size())
                 encoder_embedding = layer_outputs[0].detach()
-                # print(encoder_embedding.size())
                 encoder_states = None
                 if return_all_hiddens:
                     encoder_states = [
@@ -166,7 +159,7 @@ class TransformerWithBertEncoder(FairseqEncoder):
                 ]
 
         # print('ok before return encoderout')
-        return EncoderOut(
+        return EncoderOut( 
             encoder_out=x,  # T x B x C
             encoder_padding_mask=encoder_padding_mask,  # B x T
             encoder_embedding=encoder_embedding,  # B x T x C
