@@ -14,26 +14,18 @@ seed=0
 vocab="${data_dir}/vocab.src_freq3.code_freq3.bin"
 train_file="${data_dir}/train.all_0.bin"
 dev_file="${data_dir}/dev.bin"
-dropout=0.3
-hidden_size=256
-<<<<<<< HEAD
-# embed_size=128
-# action_embed_size=128
-# field_embed_size=64
-# type_embed_size=64
+
+batch_size=256
+hidden_size=768
 embed_size=768
-action_embed_size=768
+action_embed_size=512
 field_embed_size=768
 type_embed_size=768
-=======
-embed_size=768
-action_embed_size=128
-field_embed_size=64
-type_embed_size=64
->>>>>>> 538eb8c162dfe467a00199ea976d823a6ca990e0
+# field_embed_size 256 --type_embed_size 256
+
+dropout=0.3
 lr=0.001
 lr_decay=0.5
-batch_size=64
 max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm

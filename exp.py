@@ -197,8 +197,8 @@ def train(args):
         if is_better:
             patience = 0
             model_file = args.save_to + '.bin'
-            print('save the current model ..', file=sys.stderr)
-            print('save model to [%s]' % model_file, file=sys.stderr)
+            print('save the current model...', file=sys.stderr)
+            print(f'save model to [{model_file}]', file=sys.stderr)
             model.save(model_file)
             # also save the optimizers' state
             torch.save(optimizer.state_dict(), args.save_to + '.optim.bin')

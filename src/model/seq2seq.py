@@ -88,7 +88,7 @@ class Seq2SeqModel(nn.Module):
 
         return src_encodings, (last_state, last_cell)
 
-    def init_decoder_state(self, enc_last_state, enc_last_cell):
+    def init_decoder_state(self, enc_last_cell):
         dec_init_cell = self.decoder_cell_init(enc_last_cell)
         dec_init_state = torch.tanh(dec_init_cell)
 
@@ -203,8 +203,8 @@ class Seq2SeqModel(nn.Module):
             tgt_token_scores: Variable(tgt_sent_len, batch_size, tgt_vocab_size)
         """
 
-        src_encodings, (last_state, last_cell) = self.encode(src_sents_var, src_sents_len)
-        dec_init_vec = self.init_decoder_state(last_state, last_cell)
+        src_encodings, (_, last_cell) = self.encode(src_sents_var, src_sents_len)
+        dec_init_vec = self.init_decoder_state(last_cell)
         tgt_token_logits = self.decode(src_encodings, src_sents_len, dec_init_vec, tgt_sents_var)
         tgt_sent_log_scores = self.score_decoding_results(tgt_token_logits, tgt_sents_var)
 
@@ -243,8 +243,8 @@ class Seq2SeqModel(nn.Module):
             list(chain.from_iterable([l] * sample_size for l in src_sents_len)),
             cuda=self.cuda)
 
-        src_encodings, (last_state, last_cell) = self.encode(src_sents_var, src_sents_len)
-        dec_init_vec = self.init_decoder_state(last_state, last_cell)
+        src_encodings, (_, last_cell) = self.encode(src_sents_var, src_sents_len)
+        dec_init_vec = self.init_decoder_state(last_cell)
 
         return self.sample_from_src_encoding(src_encodings, dec_init_vec, sample_size, src_sent_masks)
 

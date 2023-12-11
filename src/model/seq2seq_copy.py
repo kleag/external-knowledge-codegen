@@ -99,8 +99,8 @@ class Seq2SeqWithCopy(Seq2SeqModel):
         :return: Variable(batch_size)
         """
 
-        src_encodings, (last_state, last_cell) = self.encode(src_sents_var, src_sents_len)
-        dec_init_vec = self.init_decoder_state(last_state, last_cell)
+        src_encodings, (_, last_cell) = self.encode(src_sents_var, src_sents_len)
+        dec_init_vec = self.init_decoder_state(last_cell)
 
         # (batch_size, src_sent_len)
         src_sent_masks = nn_utils.length_array_to_mask_tensor(src_sents_len, cuda=self.cuda)
@@ -176,8 +176,8 @@ class Seq2SeqWithCopy(Seq2SeqModel):
             else:
                 token_set.add(tid)
 
-        src_encodings, (last_state, last_cell) = self.encode(src_sent_var, [len(src_sent)])
-        h_tm1 = self.init_decoder_state(last_state, last_cell)
+        src_encodings, (_, last_cell) = self.encode(src_sent_var, [len(src_sent)])
+        h_tm1 = self.init_decoder_state(last_cell)
 
         # (batch_size, 1, hidden_size)
         src_encodings_att_linear = self.att_src_linear(src_encodings)

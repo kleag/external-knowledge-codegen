@@ -25,7 +25,8 @@ def init_arg_parser():
     arg_parser = argparse.ArgumentParser()
 
     # ### General configuration ####
-    arg_parser.add_argument('--fine_tuning', default=False, action='store_true',
+    arg_parser.add_argument('--fine_tuning', default=False,
+                            action='store_true',
                             help='Are we at the fine tuning step')
     arg_parser.add_argument('--seed', default=0, type=int, help='Random seed')
     arg_parser.add_argument('--cuda', action='store_true', default=False,
@@ -74,7 +75,8 @@ def init_arg_parser():
     arg_parser.add_argument('--embed_size', default=128, type=int,
                             help='Size of word embeddings')
     arg_parser.add_argument('--action_embed_size', default=128, type=int,
-                            help='Size of ApplyRule/GenToken action embeddings')
+                            help='Size of ApplyRule/GenToken action '
+                            'embeddings')
     arg_parser.add_argument('--field_embed_size', default=64, type=int,
                             help='Embedding size of ASDL fields')
     arg_parser.add_argument('--type_embed_size', default=64, type=int,
@@ -103,20 +105,33 @@ def init_arg_parser():
                             help='Use different linear mapping ')
 
     # supervised attention
-    arg_parser.add_argument('--sup_attention', default=False, action='store_true', help='Use supervised attention')
+    arg_parser.add_argument('--sup_attention', default=False,
+                            action='store_true',
+                            help='Use supervised attention')
 
     # parent information switch for decoder LSTM
-    arg_parser.add_argument('--no_parent_production_embed', default=False, action='store_true',
-                            help='Do not use embedding of parent ASDL production to update decoder LSTM state')
-    arg_parser.add_argument('--no_parent_field_embed', default=False, action='store_true',
-                            help='Do not use embedding of parent field to update decoder LSTM state')
-    arg_parser.add_argument('--no_parent_field_type_embed', default=False, action='store_true',
-                            help='Do not use embedding of the ASDL type of parent field to update decoder LSTM state')
-    arg_parser.add_argument('--no_parent_state', default=False, action='store_true',
-                            help='Do not use the parent hidden state to update decoder LSTM state')
+    arg_parser.add_argument('--no_parent_production_embed', default=False,
+                            action='store_true',
+                            help='Do not use embedding of parent ASDL '
+                            'production to update decoder LSTM state')
+    arg_parser.add_argument('--no_parent_field_embed', default=False,
+                            action='store_true',
+                            help='Do not use embedding of parent field to '
+                            'update decoder LSTM state')
+    arg_parser.add_argument('--no_parent_field_type_embed', default=False,
+                            action='store_true',
+                            help='Do not use embedding of the ASDL type of '
+                            'parent field to update decoder LSTM state')
+    arg_parser.add_argument('--no_parent_state', default=False,
+                            action='store_true',
+                            help='Do not use the parent hidden state to '
+                            'update decoder LSTM state')
 
-    arg_parser.add_argument('--no_input_feed', default=False, action='store_true', help='Do not use input feeding in decoder LSTM')
-    arg_parser.add_argument('--no_copy', default=False, action='store_true', help='Do not use copy mechanism')
+    arg_parser.add_argument('--no_input_feed', default=False,
+                            action='store_true',
+                            help='Do not use input feeding in decoder LSTM')
+    arg_parser.add_argument('--no_copy', default=False, action='store_true',
+                            help='Do not use copy mechanism')
 
     # ### Training ### #
     arg_parser.add_argument('--bert_model', type=str,
@@ -163,61 +178,107 @@ def init_arg_parser():
     arg_parser.add_argument('--log_every', default=10, type=int,
                             help='Log training statistics every n iterations')
 
-    arg_parser.add_argument('--save_to', default='model', type=str, help='Save trained model to')
-    arg_parser.add_argument('--save_all_models', default=False, action='store_true', help='Save all intermediate checkpoints')
-    arg_parser.add_argument('--patience', default=5, type=int, help='Training patience')
-    arg_parser.add_argument('--max_num_trial', default=10, type=int, help='Stop training after x number of trials')
+    arg_parser.add_argument('--save-to', default='./model', type=str,
+                            help='Save trained model to')
+    arg_parser.add_argument('--save_all_models', default=False,
+                            action='store_true',
+                            help='Save all intermediate checkpoints')
+    arg_parser.add_argument('--patience', default=5, type=int,
+                            help='Training patience')
+    arg_parser.add_argument('--max_num_trial', default=10, type=int,
+                            help='Stop training after x number of trials')
     arg_parser.add_argument('--uniform_init', default=None, type=float,
-                            help='If specified, use uniform initialization for all parameters')
-    arg_parser.add_argument('--glorot_init', default=False, action='store_true', help='Use glorot initialization')
-    arg_parser.add_argument('--clip_grad', default=5., type=float, help='Clip gradients')
-    arg_parser.add_argument('--max_epoch', default=-1, type=int, help='Maximum number of training epoches')
-    arg_parser.add_argument('--optimizer', default='Adam', type=str, help='optimizer')
-    arg_parser.add_argument('--lr', default=0.001, type=float, help='Learning rate')
+                            help='If specified, use uniform initialization '
+                            'for all parameters')
+    arg_parser.add_argument('--glorot_init', default=False,
+                            action='store_true',
+                            help='Use glorot initialization')
+    arg_parser.add_argument('--clip_grad', default=5., type=float,
+                            help='Clip gradients')
+    arg_parser.add_argument('--max_epoch', default=-1, type=int,
+                            help='Maximum number of training epoches')
+    arg_parser.add_argument('--optimizer', default='Adam', type=str,
+                            help='optimizer')
+    arg_parser.add_argument('--lr', default=0.001, type=float,
+                            help='Learning rate')
     arg_parser.add_argument('--lr_decay', default=0.5, type=float,
-                            help='decay learning rate if the validation performance drops')
-    arg_parser.add_argument('--lr_decay_after_epoch', default=0, type=int, help='Decay learning rate after x epoch')
-    arg_parser.add_argument('--decay_lr_every_epoch', action='store_true', default=False, help='force to decay learning rate after each epoch')
-    arg_parser.add_argument('--reset_optimizer', action='store_true', default=False, help='Whether to reset optimizer when loading the best checkpoint')
-    arg_parser.add_argument('--verbose', action='store_true', default=False, help='Verbose mode')
-    arg_parser.add_argument('--eval_top_pred_only', action='store_true', default=False,
-                            help='Only evaluate the top prediction in validation')
+                            help='decay learning rate if the validation '
+                            'performance drops')
+    arg_parser.add_argument('--lr_decay_after_epoch', default=0, type=int,
+                            help='Decay learning rate after x epoch')
+    arg_parser.add_argument('--decay_lr_every_epoch', action='store_true',
+                            default=False,
+                            help='force to decay learning rate after each '
+                            'epoch')
+    arg_parser.add_argument('--reset_optimizer', action='store_true',
+                            default=False,
+                            help='Whether to reset optimizer when loading the '
+                            'best checkpoint')
+    arg_parser.add_argument('--verbose', action='store_true', default=False,
+                            help='Verbose mode')
+    arg_parser.add_argument('--eval_top_pred_only', action='store_true',
+                            default=False,
+                            help='Only evaluate the top prediction in '
+                            'validation')
 
-    #### decoding/validation/testing ####
-    arg_parser.add_argument('--load_model', default=None, type=str, help='Load a pre-trained model')
-    arg_parser.add_argument('--beam_size', default=5, type=int, help='Beam size for beam search')
-    arg_parser.add_argument('--decode_max_time_step', default=100, type=int, help='Maximum number of time steps used '
-                                                                                  'in decoding and sampling')
-    arg_parser.add_argument('--sample_size', default=5, type=int, help='Sample size')
-    arg_parser.add_argument('--test_file', type=str, help='Path to the test file')
-    arg_parser.add_argument('--save_decode_to', default=None, type=str, help='Save decoding results to file')
+    # #### decoding/validation/testing ####
+    arg_parser.add_argument('--load_model', default=None, type=str,
+                            help='Load a pre-trained model')
+    arg_parser.add_argument('--beam_size', default=5, type=int,
+                            help='Beam size for beam search')
+    arg_parser.add_argument('--decode_max_time_step', default=100, type=int,
+                            help='Maximum number of time steps used '
+                            'in decoding and sampling')
+    arg_parser.add_argument('--sample_size', default=5, type=int,
+                            help='Sample size')
+    arg_parser.add_argument('--test_file', type=str,
+                            help='Path to the test file')
+    arg_parser.add_argument('--save_decode_to', default=None, type=str,
+                            help='Save decoding results to file')
 
-    #### reranking ####
+    # #### reranking ####
     arg_parser.add_argument('--features', nargs='+')
-    arg_parser.add_argument('--load_reconstruction_model', type=str, help='Load reconstruction model')
-    arg_parser.add_argument('--load_paraphrase_model', type=str, help='Load paraphrase model')
-    arg_parser.add_argument('--load_reranker', type=str, help='Load reranking model')
-    arg_parser.add_argument('--tie_embed', action='store_true', help='tie source and target embedding in training paraphrasing model')
-    arg_parser.add_argument('--train_decode_file', default=None, type=str, help='Decoding results on training set')
-    arg_parser.add_argument('--test_decode_file', default=None, type=str, help='Decoding results on test set')
-    arg_parser.add_argument('--dev_decode_file', default=None, type=str, help='Decoding results on dev set')
-    arg_parser.add_argument('--metric', default='accuracy', choices=['bleu', 'accuracy'])
-    arg_parser.add_argument('--num_workers', default=1, type=int, help='number of multiprocess workers')
+    arg_parser.add_argument('--load_reconstruction_model', type=str,
+                            help='Load reconstruction model')
+    arg_parser.add_argument('--load_paraphrase_model', type=str,
+                            help='Load paraphrase model')
+    arg_parser.add_argument('--load_reranker', type=str,
+                            help='Load reranking model')
+    arg_parser.add_argument('--tie_embed', action='store_true',
+                            help='tie source and target embedding in training '
+                            'paraphrasing model')
+    arg_parser.add_argument('--train_decode_file', default=None, type=str,
+                            help='Decoding results on training set')
+    arg_parser.add_argument('--test_decode_file', default=None, type=str,
+                            help='Decoding results on test set')
+    arg_parser.add_argument('--dev_decode_file', default=None, type=str,
+                            help='Decoding results on dev set')
+    arg_parser.add_argument('--metric', default='accuracy',
+                            choices=['bleu', 'accuracy'])
+    arg_parser.add_argument('--num_workers', default=1, type=int,
+                            help='number of multiprocess workers')
 
     #### self-training ####
-    arg_parser.add_argument('--load_decode_results', default=None, type=str)
-    arg_parser.add_argument('--unsup_loss_weight', default=1., type=float, help='loss of unsupervised learning weight')
-    arg_parser.add_argument('--unlabeled_file', type=str, help='Path to the training source file used in semi-supervised self-training')
+    arg_parser.add_argument('--load_decode_results', default=None,
+                            type=str)
+    arg_parser.add_argument('--unsup_loss_weight', default=1., type=float,
+                            help='loss of unsupervised learning weight')
+    arg_parser.add_argument('--unlabeled_file', type=str,
+                            help='Path to the training source file used in '
+                            'semi-supervised self-training')
 
-    #### interactive mode ####
-    arg_parser.add_argument('--example_preprocessor', default=None, type=str, help='name of the class that is used to pre-process raw input examples')
+    # #### interactive mode ####
+    arg_parser.add_argument('--example_preprocessor', default=None, type=str,
+                            help='name of the class that is used to '
+                            'pre-process raw input examples')
 
     return arg_parser
 
 
 def update_args(args, arg_parser):
     for action in arg_parser._actions:
-        if isinstance(action, argparse._StoreAction) or isinstance(action, argparse._StoreTrueAction) \
-                or isinstance(action, argparse._StoreFalseAction):
+        if (isinstance(action, argparse._StoreAction)
+                or isinstance(action, argparse._StoreTrueAction)
+                or isinstance(action, argparse._StoreFalseAction)):
             if not hasattr(args, action.dest):
                 setattr(args, action.dest, action.default)

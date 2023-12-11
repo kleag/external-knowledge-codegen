@@ -1,18 +1,23 @@
 # coding=utf-8
 from __future__ import print_function
 
-import os
-from six.moves import xrange as range
+import fairseq
 import math
-from collections import OrderedDict
 import numpy as np
-
+import os
+import sys
 import torch
 import torch.nn as nn
-import torch.nn.utils
-from torch.autograd import Variable
 import torch.nn.functional as F
+import torch.nn.utils
+
+from collections import OrderedDict
+from fairseq import options, utils
+from six.moves import xrange as range
+from torch.autograd import Variable
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
+from transformers import BertTokenizer
+
 
 from asdl.hypothesis import Hypothesis, GenTokenAction
 from asdl.transition_system import ApplyRuleAction, ReduceAction, Action
@@ -27,10 +32,6 @@ from model.nn_utils import LabelSmoothing
 from model.pointer_net import PointerNet
 
 from .transformer_with_pretrained_bert import TransformerWithBertEncoder
-from fairseq import options, utils
-import fairseq
-from transformers import BertTokenizer
-import pdb
 
 def Embedding(num_embeddings, embedding_dim, padding_idx):
     m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
@@ -212,25 +213,34 @@ class Parser(nn.Module):
             mask = Variable(self.new_tensor(src_sents_var.size()).fill_(1. - self.args.word_dropout).bernoulli().long())
             src_sents_var = src_sents_var * mask + (1 - mask) * self.vocab.source.unk_id
 
-        src_token_embed = self.src_embed(src_sents_var)
 
+        src_token_embed = self.src_embed(src_sents_var)
         if type(self.encoder)  == TransformerWithBertEncoder:
             src_encodings = self.encoder(src_token_embed, src_sents_len)
+            print(f"encode BERT "
+                  f"src_encodings: {src_encodings.encoder_out.shape}, "
+                  f"last_state: None, "
+                  f"last_cell: None", file=sys.stderr)
+            return src_encodings.encoder_out, (None, None)
         elif type(self.encoder) == nn.LSTM:
             packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
             src_encodings, (last_state, last_cell) = self.encoder(packed_src_token_embed)
+            # src_encodings: (tgt_query_len, batch_size, hidden_size)
+
+            src_encodings, _ = pad_packed_sequence(src_encodings)
+            # src_encodings: (batch_size, tgt_query_len, hidden_size)
+            src_encodings = src_encodings.permute(1, 0, 2)
+
+            # (batch_size, hidden_size * 2)
+            last_state = torch.cat([last_state[0], last_state[1]], 1)
+            last_cell = torch.cat([last_cell[0], last_cell[1]], 1)
+            print(f"encode LSTM src_encodings: {src_encodings.shape}, "
+                  f"last_state: {last_state.shape}, "
+                  f"last_cell: {last_cell.shape}")
+            return src_encodings, (last_state, last_cell)
         else:
             raise ValueError(f"Unknown encoder type {type(self.encoder)}")
 
-        # src_encodings: (tgt_query_len, batch_size, hidden_size)
-
-        # src_encodings = pad_packed_sequence(src_encodings)
-        # src_encodings: (batch_size, tgt_query_len, hidden_size)
-        # src_encodings = src_encodings.permute(1, 0, 2)
-
-        # (batch_size, hidden_size * 2)
-        # last_state = torch.cat([last_state[0], last_state[1]], 1)
-        # last_cell = torch.cat([last_cell[0], last_cell[1]], 1)
 
         return src_encodings
     
@@ -299,10 +309,13 @@ class Parser(nn.Module):
 
         return src_encodings, (last_state, last_cell)
 
-    def init_decoder_state(self, enc_last_state, enc_last_cell):
-        """Compute the initial decoder hidden state and cell state"""
+    def init_decoder_state(self, enc_last_cell):
+        """
+        Compute the initial decoder hidden state and cell state
 
-        h_0 = self.decoder_cell_init(enc_last_cell)
+        """
+
+        h_0 = self.decoder_cell_init(enc_last_cell)  # Linear hidden_size -> hidden_size
         h_0 = torch.tanh(h_0)
 
         return h_0, Variable(self.new_tensor(h_0.size()).zero_())
@@ -321,17 +334,21 @@ class Parser(nn.Module):
 
         # src_encodings: (batch_size, src_sent_len, hidden_size * 2)
         # (last_state, last_cell, dec_init_vec): (batch_size, hidden_size)
-        src_encodings, (last_state, last_cell) = self.encode(
+        src_encodings, (_, last_cell) = self.encode(
             batch.src_sents_var, batch.src_sents_len)
-        # if self.args.encoder == 'bert':
-        #     src_encodings, (last_state, last_cell) = self.bert_encode(
-        #         batch.src_sents, batch.src_sents_len)
-        # elif self.args.encoder == 'lstm':
-        #     src_encodings, (last_state, last_cell) = self.encode(
-        #         batch.src_sents_var, batch.src_sents_len)
-        # else:
-        #     raise RuntimeError(f"Unknown uncoder: {self.args.encoder}")
-        dec_init_vec = self.init_decoder_state(last_state, last_cell)
+        # src_encodings, (last_state, last_cell) = self.encode(
+        #     batch.src_sents_var, batch.src_sents_len)
+        if self.args.encoder == 'bert':
+            print(f"src_encodings.shape: {src_encodings.shape}")
+            dec_init_vec = (torch.zeros([self.args.hidden_size,
+                                         self.args.hidden_size]),
+                            torch.zeros([self.args.hidden_size,
+                                         self.args.hidden_size]))
+        elif self.args.encoder == 'lstm':
+            dec_init_vec = self.init_decoder_state(last_cell)
+        else:
+            raise RuntimeError(f"Unknown uncoder: {self.args.encoder}")
+        print("")
 
         # query vectors are sufficient statistics used to compute action probabilities
         # query_vectors: (tgt_action_len, batch_size, hidden_size)
@@ -493,7 +510,11 @@ class Parser(nn.Module):
             # ]
 
             if t == 0:
-                x = Variable(self.new_tensor(batch_size, self.decoder_lstm.input_size).zero_(), requires_grad=False)
+                # change new_tensor first arg to self.args.hidden_size for BERT
+                # was : batch_size
+                x = Variable(self.new_tensor(self.args.hidden_size,
+                                             self.decoder_lstm.input_size).zero_(),
+                             requires_grad=False)
 
                 # initialize using the root type embedding
                 if args.no_parent_field_type_embed is False:
@@ -602,11 +623,11 @@ class Parser(nn.Module):
         src_sent_var = nn_utils.to_input_variable([src_sent], self.vocab.source, cuda=args.cuda, training=False)
 
         # Variable(1, src_sent_len, hidden_size * 2)
-        src_encodings, (last_state, last_cell) = self.encode(src_sent_var, [len(src_sent)])
+        src_encodings, (_, last_cell) = self.encode(src_sent_var, [len(src_sent)])
         # (1, src_sent_len, hidden_size)
         src_encodings_att_linear = self.att_src_linear(src_encodings)
 
-        dec_init_vec = self.init_decoder_state(last_state, last_cell)
+        dec_init_vec = self.init_decoder_state(last_cell)
         if args.lstm == 'parent_feed':
             h_tm1 = dec_init_vec[0], dec_init_vec[1], \
                     Variable(self.new_tensor(args.hidden_size).zero_()), \
@@ -901,6 +922,7 @@ class Parser(nn.Module):
         return completed_hypotheses
 
     def save(self, path):
+        print(f"save {path}", file=sys.stderr)
         dir_name = os.path.dirname(path)
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)

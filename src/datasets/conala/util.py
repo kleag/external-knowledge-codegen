@@ -54,7 +54,7 @@ def tokenize_intent(intent: str, tokenizer: str):
             truncation=True,
             return_attention_mask=False
         )
-        breakpoint()
+        # breakpoint()
         tokens = encoded_input["input_ids"]
     elif tokenizer == 'spacy':
         raise NotImplementedError("Spacy tokenization not implemented")
