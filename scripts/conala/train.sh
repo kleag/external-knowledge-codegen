@@ -18,7 +18,7 @@ dev_file="${data_dir}/dev.bin"
 batch_size=256
 hidden_size=768
 embed_size=768
-action_embed_size=512
+action_embed_size=768
 field_embed_size=768
 type_embed_size=768
 # field_embed_size 256 --type_embed_size 256
@@ -72,7 +72,7 @@ python -u -m pdb exp.py \
     --beam_size ${beam_size} \
     --log_every 50 \
     --save_decode_to ${decodes_dir}/${model_name}.decode \
-    --save_to ${model_dir}/${model_name} \
+    --save-to ${model_dir}/${model_name} \
     2>&1 | tee ${logs_dir}/${model_name}.log
 #     --verbose \
 

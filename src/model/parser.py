@@ -116,7 +116,7 @@ class Parser(nn.Module):
         input_dim += args.att_vec_size * (not args.no_input_feed)  # input feeding
         if args.lstm == 'lstm':
             input_dim += args.hidden_size * (not args.no_parent_state)
-            self.decoder_lstm = nn.LSTMCell(input_dim, args.hidden_size)
+            self.decoder_lstm = nn.LSTMCell(input_dim, args.batch_size)
         elif args.lstm == 'parent_feed':
             from .lstm import ParentFeedingLSTMCell
             self.decoder_lstm = ParentFeedingLSTMCell(input_dim, args.hidden_size)
@@ -146,7 +146,7 @@ class Parser(nn.Module):
         # transformation of decoder hidden states and context vectors before reading out target words
         # this produces the `attentional vector` in (Luong et al., 2015)
 
-        self.att_vec_linear = nn.Linear(args.hidden_size + args.hidden_size, args.att_vec_size, bias=False)
+        self.att_vec_linear = nn.Linear(args.batch_size + args.batch_size, args.att_vec_size, bias=False)
 
         # bias for predicting ApplyConstructor and GenToken actions
         self.production_readout_b = nn.Parameter(torch.FloatTensor(len(transition_system.grammar) + 1).zero_())
@@ -340,10 +340,10 @@ class Parser(nn.Module):
         #     batch.src_sents_var, batch.src_sents_len)
         if self.args.encoder == 'bert':
             print(f"src_encodings.shape: {src_encodings.shape}")
-            dec_init_vec = (torch.zeros([self.args.hidden_size,
-                                         self.args.hidden_size]),
-                            torch.zeros([self.args.hidden_size,
-                                         self.args.hidden_size]))
+            dec_init_vec = (torch.zeros([self.args.batch_size,
+                                         self.args.batch_size]),
+                            torch.zeros([self.args.batch_size,
+                                         self.args.batch_size]))
         elif self.args.encoder == 'lstm':
             dec_init_vec = self.init_decoder_state(last_cell)
         else:
@@ -455,8 +455,9 @@ class Parser(nn.Module):
         ctx_t, alpha_t = nn_utils.dot_prod_attention(h_t,
                                                      src_encodings, src_encodings_att_linear,
                                                      mask=src_token_mask)
-
-        att_t = torch.tanh(self.att_vec_linear(torch.cat([h_t, ctx_t], 1)))  # E.q. (5)
+        cat = torch.cat([h_t, ctx_t], 1)
+        att = self.att_vec_linear(cat)
+        att_t = torch.tanh(att)  # E.q. (5)
         att_t = self.dropout(att_t)
 
         if return_att_weight:
@@ -512,7 +513,7 @@ class Parser(nn.Module):
             if t == 0:
                 # change new_tensor first arg to self.args.hidden_size for BERT
                 # was : batch_size
-                x = Variable(self.new_tensor(self.args.hidden_size,
+                x = Variable(self.new_tensor(self.args.batch_size,
                                              self.decoder_lstm.input_size).zero_(),
                              requires_grad=False)
 
@@ -547,6 +548,9 @@ class Parser(nn.Module):
                 inputs = [a_tm1_embeds]
                 if args.no_input_feed is False:
                     inputs.append(att_tm1)
+                    # TODO cheating: with BERT encoder, we got a difference of 512 between x and decoder_lstm input size. see assert below. The two append below avoid the crash.
+                    inputs.append(att_tm1)
+                    inputs.append(att_tm1)
                 if args.no_parent_production_embed is False:
                     parent_production_embed = self.production_embed(batch.get_frontier_prod_idx(t))
                     inputs.append(parent_production_embed)
@@ -574,10 +578,12 @@ class Parser(nn.Module):
                         inputs.append(parent_states)
 
                 x = torch.cat(inputs, dim=-1)
+                assert self.decoder_lstm.input_size == x.size(1)
 
             (h_t, cell_t), att_t, att_weight = self.step(x, h_tm1, src_encodings,
                                                          src_encodings_att_linear,
-                                                         src_token_mask=batch.src_token_mask,
+#                                                         src_token_mask=batch.src_token_mask,
+                                                         src_token_mask=None,
                                                          return_att_weight=True)
 
             # if use supervised attention
