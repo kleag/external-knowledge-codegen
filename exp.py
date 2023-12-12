@@ -1,10 +1,10 @@
 # coding=utf-8
-# from __future__ import print_function
-
-import time
 
 import astor
+import six
 import six.moves.cPickle as pickle
+import time
+
 from six.moves import input
 from six.moves import xrange as range
 from torch.autograd import Variable
@@ -24,7 +24,7 @@ from model.utils import GloveHelper
 
 # important, make sure the astor version matches here.
 assert astor.__version__ == "0.7.1"
-import six
+
 if six.PY3:
     pass
 
@@ -146,12 +146,14 @@ def train(args):
             optimizer.step()
 
             if train_iter % args.log_every == 0:
-                log_str = f'[Iter {train_iter}] encoder loss={report_loss / report_examples:.5f}'
+                log_str = (f'[Iter {train_iter}] '
+                           f'model loss={report_loss / report_examples:.5f}')
                 if args.sup_attention:
-                    log_str += f' supervised attention loss={report_sup_att_loss / report_examples:.5f}'
+                    log_str += (f' supervised attention loss='
+                                f'{report_sup_att_loss / report_examples:.5f}')
                     report_sup_att_loss = 0.
 
-                print(log_str, file=sys.stderr)
+                print(log_str, end='\r', file=sys.stdout)
                 report_loss = report_examples = 0.
 
         print(f'[Epoch {epoch}] epoch elapsed {time.time() - epoch_begin}s',
@@ -269,7 +271,7 @@ def train_rerank_feature(args):
                 try:
                     transition_system.tokenize_code(hyp.code)
                     valid_hyps.append(hyp)
-                except:
+                except Exception:
                     pass
 
             _decode_results[i] = valid_hyps
@@ -377,7 +379,8 @@ def train_rerank_feature(args):
         else:
             return None
 
-    print(f'begin training decoder, {len(train_set)} training examples, {len(dev_set)} dev examples',
+    print(f'begin training decoder, {len(train_set)} training examples, '
+          f'{len(dev_set)} dev examples',
           file=sys.stderr)
     print(f'vocab: {repr(vocab)}', file=sys.stderr)
 
@@ -391,18 +394,22 @@ def train_rerank_feature(args):
 
         for batch_examples in train_set.batch_iter(batch_size=args.batch_size,
                                                    shuffle=True):
-            batch_examples = [e for e in batch_examples
-                              if len(e.tgt_actions) <= args.decode_max_time_step]
+            batch_examples = [
+                e for e in batch_examples
+                if len(e.tgt_actions) <= args.decode_max_time_step]
 
             if train_paraphrase_model:
                 positive_examples_num = len(batch_examples)
                 labels = [0] * len(batch_examples)
                 negative_samples = []
-                batch_decoding_results = [train_decode_results[e.idx] for e in batch_examples]
+                batch_decoding_results = [train_decode_results[e.idx]
+                                          for e in batch_examples]
                 # sample negative examples
-                for example, hyps in zip(batch_examples, batch_decoding_results):
+                for example, hyps in zip(batch_examples,
+                                         batch_decoding_results):
                     if hyps:
-                        negative_sample = get_negative_example(example, hyps, type=args.negative_sample_type)
+                        negative_sample = get_negative_example(
+                            example, hyps, type=args.negative_sample_type)
                         if negative_sample:
                             if isinstance(negative_sample, Example):
                                 negative_samples.append(negative_sample)
@@ -418,8 +425,10 @@ def train_rerank_feature(args):
 
             nll = -model(batch_examples)
             if train_paraphrase_model:
-                idx_tensor = Variable(torch.LongTensor(labels).unsqueeze(-1), requires_grad=False)
-                if args.cuda: idx_tensor = idx_tensor.cuda()
+                idx_tensor = Variable(torch.LongTensor(labels).unsqueeze(-1),
+                                      requires_grad=False)
+                if args.cuda:
+                    idx_tensor = idx_tensor.cuda()
                 loss = torch.gather(nll, 1, idx_tensor)
             else:
                 loss = nll
@@ -433,27 +442,33 @@ def train_rerank_feature(args):
             loss.backward()
 
             # clip gradient
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(),
+                                                       args.clip_grad)
 
             optimizer.step()
 
             if train_iter % args.log_every == 0:
-                print('[Iter %d] encoder loss=%.5f' %
-                      (train_iter,
-                       report_loss / report_examples),
-                      file=sys.stderr)
+                print(f'[Iter {train_iter}] '
+                      f'model loss={report_loss / report_examples:.5f}',
+                      end='\r',
+                      file=sys.stdout)
 
                 report_loss = report_examples = 0.
 
-        print('[Epoch %d] epoch elapsed %ds' % (epoch, time.time() - epoch_begin), file=sys.stderr)
+        print('[Epoch {epoch}] epoch elapsed {time.time() - epoch_begin}s',
+              file=sys.stderr)
 
         # perform validation
-        print('[Epoch %d] begin validation' % epoch, file=sys.stderr)
+        print(f'[Epoch %d] begin validation' % epoch, file=sys.stderr)
         eval_start = time.time()
         # evaluate dev_score
-        dev_acc = evaluate_paraphrase_acc() if train_paraphrase_model else -evaluate_ppl()
-        print('[Epoch %d] dev_score=%.5f took %ds' % (epoch, dev_acc, time.time() - eval_start), file=sys.stderr)
-        is_better = history_dev_scores == [] or dev_acc > max(history_dev_scores)
+        dev_acc = (evaluate_paraphrase_acc()
+                   if train_paraphrase_model else -evaluate_ppl())
+        print(f'[Epoch {epoch}] dev_score={dev_acc:.5f} '
+              f'took {time.time() - eval_start}s',
+              file=sys.stderr)
+        is_better = (history_dev_scores == []
+                     or dev_acc > max(history_dev_scores))
         history_dev_scores.append(dev_acc)
 
         if is_better:
@@ -477,20 +492,27 @@ def train_rerank_feature(args):
 
             # decay lr, and restore from previously best checkpoint
             lr = optimizer.param_groups[0]['lr'] * args.lr_decay
-            print('load previously best model and decay learning rate to %f' % lr, file=sys.stderr)
+            print(f'load previously best model and decay learning rate to '
+                  f'{lr}',
+                  file=sys.stderr)
 
             # load model
-            params = torch.load(args.save_to + '.bin', map_location=lambda storage, loc: storage)
+            params = torch.load(args.save_to + '.bin',
+                                map_location=lambda storage,
+                                loc: storage)
             model.load_state_dict(params['state_dict'])
-            if args.cuda: model = model.cuda()
+            if args.cuda:
+                model = model.cuda()
 
             # load optimizers
             if args.reset_optimizer:
                 print('reset optimizer', file=sys.stderr)
-                optimizer = torch.optim.Adam(model.inference_model.parameters(), lr=lr)
+                optimizer = torch.optim.Adam(
+                    model.inference_model.parameters(), lr=lr)
             else:
                 print('restore parameters of the optimizers', file=sys.stderr)
-                optimizer.load_state_dict(torch.load(args.save_to + '.optim.bin'))
+                optimizer.load_state_dict(
+                    torch.load(args.save_to + '.optim.bin'))
 
             # set new lr
             for param_group in optimizer.param_groups:
@@ -541,7 +563,7 @@ def interactive_mode(args):
         hypotheses = parser.parse(utterance, debug=True)
 
         for hyp_id, hyp in enumerate(hypotheses):
-            print('------------------ Hypothesis %d ------------------' % hyp_id)
+            print(f'------------------ Hypothesis {hyp_id} ------------------')
             print(hyp.code)
             # print(hyp.tree.to_string())
             # print('Actions:')
@@ -550,7 +572,8 @@ def interactive_mode(args):
 
 
 def train_reranker_and_test(args):
-    print('load dataset [test %s], [dev %s]' % (args.test_file, args.dev_file), file=sys.stderr)
+    print(f'load dataset [test {args.test_file}], [dev {args.dev_file}]',
+          file=sys.stderr)
     test_set = Dataset.from_bin_file(args.test_file)
     dev_set = Dataset.from_bin_file(args.dev_file)
 
@@ -559,28 +582,35 @@ def train_reranker_and_test(args):
     while i < len(args.features):
         feat_name = args.features[i]
         feat_cls = Registrable.by_name(feat_name)
-        print('Add feature %s' % feat_name, file=sys.stderr)
+        print(f'Add feature {feat_name}', file=sys.stderr)
         if issubclass(feat_cls, nn.Module):
-            feat_path = os.path.join('saved_models/conala/', args.features[i] + '.bin')
+            feat_path = os.path.join('saved_models/conala/',
+                                     args.features[i] + '.bin')
             feat_inst = feat_cls.load(feat_path)
-            print('Load feature %s from %s' % (feat_name, feat_path), file=sys.stderr)
+            print(f'Load feature {feat_name} from {feat_path}',
+                  file=sys.stderr)
         else:
             feat_inst = feat_cls()
 
         features.append(feat_inst)
         i += 1
 
-    transition_system = next(feat.transition_system for feat in features if hasattr(feat, 'transition_system'))
+    transition_system = next(feat.transition_system for feat in features
+                             if hasattr(feat, 'transition_system'))
     evaluator = Registrable.by_name(args.evaluator)(transition_system)
 
-
-    print('load dev decode results [%s]' % args.dev_decode_file, file=sys.stderr)
+    print(f'load dev decode results [{args.dev_decode_file}]',
+          file=sys.stderr)
     dev_decode_results = pickle.load(open(args.dev_decode_file, 'rb'))
-    dev_eval_results = evaluator.evaluate_dataset(dev_set, dev_decode_results, fast_mode=False)
+    dev_eval_results = evaluator.evaluate_dataset(dev_set, dev_decode_results,
+                                                  fast_mode=False)
 
-    print('load test decode results [%s]' % args.test_decode_file, file=sys.stderr)
+    print(f'load test decode results [{args.test_decode_file}]',
+          file=sys.stderr)
     test_decode_results = pickle.load(open(args.test_decode_file, 'rb'))
-    test_eval_results = evaluator.evaluate_dataset(test_set, test_decode_results, fast_mode=False)
+    test_eval_results = evaluator.evaluate_dataset(test_set,
+                                                   test_decode_results,
+                                                   fast_mode=False)
 
     print('Dev Eval Results', file=sys.stderr)
     print(dev_eval_results, file=sys.stderr)
@@ -590,12 +620,17 @@ def train_reranker_and_test(args):
     if args.load_reranker:
         reranker = GridSearchReranker.load(args.load_reranker)
     else:
-        reranker = GridSearchReranker(features, transition_system=transition_system)
+        reranker = GridSearchReranker(features,
+                                      transition_system=transition_system)
 
         if args.num_workers == 1:
-            reranker.train(dev_set.examples, dev_decode_results, evaluator=evaluator)
+            reranker.train(dev_set.examples, dev_decode_results,
+                           evaluator=evaluator)
         else:
-            reranker.train_multiprocess(dev_set.examples, dev_decode_results, evaluator=evaluator, num_workers=args.num_workers)
+            reranker.train_multiprocess(dev_set.examples,
+                                        dev_decode_results,
+                                        evaluator=evaluator,
+                                        num_workers=args.num_workers)
 
         if args.save_to:
             print('Save Reranker to %s' % args.save_to, file=sys.stderr)
@@ -607,7 +642,6 @@ def train_reranker_and_test(args):
 
     print('Test Eval Results After Reranking', file=sys.stderr)
     print(test_score_with_rerank, file=sys.stderr)
-
 
 
 if __name__ == '__main__':

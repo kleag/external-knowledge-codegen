@@ -40,12 +40,14 @@ install -d ${decodes_dir}
 echo "**** Writing results to ${logs_dir}/${model_name}.log ****"
 echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
-python -u -m pdb exp.py \
+#     -m pdb \
+python \
+    -u \
+    exp.py \
     ${cuda} \
     --data_path ${data_dir} \
     --seed ${seed} \
     --mode train \
-    --batch_size ${batch_size} \
     --evaluator conala_evaluator \
     --asdl_file src/asdl/lang/py3/py3_asdl.simplified.txt \
     --transition_system python3 \
@@ -56,6 +58,7 @@ python -u -m pdb exp.py \
     --encoder ${encoder} \
     --no_parent_field_type_embed \
     --no_parent_production_embed \
+    --batch_size ${batch_size} \
     --hidden_size ${hidden_size} \
     --embed_size ${embed_size} \
     --action_embed_size ${action_embed_size} \
@@ -70,7 +73,7 @@ python -u -m pdb exp.py \
     --lr_decay_after_epoch ${lr_decay_after_epoch} \
     --max_epoch ${max_epoch} \
     --beam_size ${beam_size} \
-    --log_every 5 \
+    --log_every 1 \
     --save_decode_to ${decodes_dir}/${model_name}.decode \
     --save-to ${model_dir}/${model_name} \
     2>&1 | tee ${logs_dir}/${model_name}.log

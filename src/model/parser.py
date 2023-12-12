@@ -350,7 +350,6 @@ class Parser(nn.Module):
             dec_init_vec = self.init_decoder_state(last_cell)
         else:
             raise RuntimeError(f"Unknown uncoder: {self.args.encoder}")
-        print("")
 
         # query vectors are sufficient statistics used to compute action probabilities
         # query_vectors: (tgt_action_len, batch_size, hidden_size)
@@ -821,11 +820,15 @@ class Parser(nn.Module):
 
                         if args.no_copy is False and len(hyp_unk_copy_info) > 0:
                             unk_i = np.array([x['copy_prob'] for x in hyp_unk_copy_info]).argmax()
-                            token = primitive_vocab.id2word[hyp_unk_copy_info[unk_i]['token']]
+                            try:
+                                token = primitive_vocab.id2word[hyp_unk_copy_info[unk_i]['token']]
+                            except KeyError:
+                                token = "<unk>"  # TODO: remove this ack avoiding a crash
                             primitive_prob[hyp_id, primitive_vocab.unk_id] = hyp_unk_copy_info[unk_i]['copy_prob']
                             gentoken_new_hyp_unks.append(token)
 
-                            hyp_copy_info[token] = (hyp_unk_copy_info[unk_i]['token_pos_list'], hyp_unk_copy_info[unk_i]['copy_prob'])
+                            hyp_copy_info[token] = (hyp_unk_copy_info[unk_i]['token_pos_list'], 
+                                                    hyp_unk_copy_info[unk_i]['copy_prob'])
 
             new_hyp_scores = None
             if applyrule_new_hyp_scores:

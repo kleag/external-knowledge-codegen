@@ -89,7 +89,6 @@ class TransformerWithBertEncoder(FairseqEncoder):
         self.bert_model = BertModel.from_pretrained(
             args.bert_model, return_dict=False, output_hidden_states=True
         )
-        print("")
         # self.bert_model.resize_token_embeddings(30525)
 
     def forward(
