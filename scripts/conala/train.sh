@@ -70,7 +70,7 @@ python -u -m pdb exp.py \
     --lr_decay_after_epoch ${lr_decay_after_epoch} \
     --max_epoch ${max_epoch} \
     --beam_size ${beam_size} \
-    --log_every 50 \
+    --log_every 5 \
     --save_decode_to ${decodes_dir}/${model_name}.decode \
     --save-to ${model_dir}/${model_name} \
     2>&1 | tee ${logs_dir}/${model_name}.log

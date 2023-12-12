@@ -113,6 +113,8 @@ def train(args):
             batch_examples = [
               e for e in batch_examples
               if len(e.tgt_actions) <= args.decode_max_time_step]
+            if len(batch_examples) < args.batch_size:
+                break
             train_iter += 1
             optimizer.zero_grad()
 
@@ -144,30 +146,27 @@ def train(args):
             optimizer.step()
 
             if train_iter % args.log_every == 0:
-                log_str = '[Iter %d] encoder loss=%.5f' % (
-                  train_iter, report_loss / report_examples)
+                log_str = f'[Iter {train_iter}] encoder loss={report_loss / report_examples:.5f}'
                 if args.sup_attention:
-                    log_str += ' supervised attention loss=%.5f' % (
-                      report_sup_att_loss / report_examples)
+                    log_str += f' supervised attention loss={report_sup_att_loss / report_examples:.5f}'
                     report_sup_att_loss = 0.
 
                 print(log_str, file=sys.stderr)
                 report_loss = report_examples = 0.
 
-        print('[Epoch %d] epoch elapsed %ds' % (
-          epoch, time.time() - epoch_begin),
+        print(f'[Epoch {epoch}] epoch elapsed {time.time() - epoch_begin}s',
               file=sys.stderr)
 
         if args.save_all_models:
-            model_file = args.save_to + '.iter%d.bin' % train_iter
-            print('save model to [%s]' % model_file, file=sys.stderr)
+            model_file = f'{args.save_to}.iter{train_iter}.bin'
+            print(f'save model to [{model_file}]', file=sys.stderr)
             model.save(model_file)
 
         # perform validation
         is_better = False
         if args.dev_file:
             if epoch % args.valid_every_epoch == 0:
-                print('[Epoch %d] begin validation' % epoch, file=sys.stderr)
+                print(f'[Epoch {epoch}] begin validation', file=sys.stderr)
                 eval_start = time.time()
                 eval_results = evaluation.evaluate(
                   dev_set.examples, model, evaluator, args,
@@ -188,7 +187,7 @@ def train(args):
 
         if args.decay_lr_every_epoch and epoch > args.lr_decay_after_epoch:
             lr = optimizer.param_groups[0]['lr'] * args.lr_decay
-            print('decay learning rate to %f' % lr, file=sys.stderr)
+            print(f'decay learning rate to {lr}', file=sys.stderr)
 
             # set new lr
             for param_group in optimizer.param_groups:
@@ -204,15 +203,15 @@ def train(args):
             torch.save(optimizer.state_dict(), args.save_to + '.optim.bin')
         elif patience < args.patience and epoch >= args.lr_decay_after_epoch:
             patience += 1
-            print('hit patience %d' % patience, file=sys.stderr)
+            print(f'hit patience {patience}', file=sys.stderr)
 
         if epoch == args.max_epoch:
-            print('reached max epoch, stop!', file=sys.stderr)
+            print(f'reached max epochy {epoch}, stop!', file=sys.stderr)
             exit(0)
 
         if patience >= args.patience and epoch >= args.lr_decay_after_epoch:
             num_trial += 1
-            print('hit #%d trial' % num_trial, file=sys.stderr)
+            print(f'hit #{num_trial} trial', file=sys.stderr)
             if num_trial == args.max_num_trial:
                 print('early stop!', file=sys.stderr)
                 exit(0)
@@ -378,9 +377,9 @@ def train_rerank_feature(args):
         else:
             return None
 
-    print('begin training decoder, %d training examples, %d dev examples' % (len(train_set), len(dev_set)),
+    print(f'begin training decoder, {len(train_set)} training examples, {len(dev_set)} dev examples',
           file=sys.stderr)
-    print('vocab: %s' % repr(vocab), file=sys.stderr)
+    print(f'vocab: {repr(vocab)}', file=sys.stderr)
 
     epoch = train_iter = 0
     report_loss = report_examples = 0.

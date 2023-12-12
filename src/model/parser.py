@@ -217,10 +217,10 @@ class Parser(nn.Module):
         src_token_embed = self.src_embed(src_sents_var)
         if type(self.encoder)  == TransformerWithBertEncoder:
             src_encodings = self.encoder(src_token_embed, src_sents_len)
-            print(f"encode BERT "
-                  f"src_encodings: {src_encodings.encoder_out.shape}, "
-                  f"last_state: None, "
-                  f"last_cell: None", file=sys.stderr)
+#            print(f"encode BERT "
+#                  f"src_encodings: {src_encodings.encoder_out.shape}, "
+#                  f"last_state: None, "
+#                  f"last_cell: None", file=sys.stderr)
             return src_encodings.encoder_out, (None, None)
         elif type(self.encoder) == nn.LSTM:
             packed_src_token_embed = pack_padded_sequence(src_token_embed, src_sents_len)
@@ -234,9 +234,10 @@ class Parser(nn.Module):
             # (batch_size, hidden_size * 2)
             last_state = torch.cat([last_state[0], last_state[1]], 1)
             last_cell = torch.cat([last_cell[0], last_cell[1]], 1)
-            print(f"encode LSTM src_encodings: {src_encodings.shape}, "
-                  f"last_state: {last_state.shape}, "
-                  f"last_cell: {last_cell.shape}")
+#            print(f"encode LSTM src_encodings: {src_encodings.shape}, "
+#                  f"last_state: {last_state.shape}, "
+#                  f"last_cell: {last_cell.shape}",
+#                  file=sys.stderr)
             return src_encodings, (last_state, last_cell)
         else:
             raise ValueError(f"Unknown encoder type {type(self.encoder)}")
@@ -339,7 +340,8 @@ class Parser(nn.Module):
         # src_encodings, (last_state, last_cell) = self.encode(
         #     batch.src_sents_var, batch.src_sents_len)
         if self.args.encoder == 'bert':
-            print(f"src_encodings.shape: {src_encodings.shape}")
+            # print(f"src_encodings.shape: {src_encodings.shape}",
+            #       file=sys.stderr)
             dec_init_vec = (torch.zeros([self.args.batch_size,
                                          self.args.batch_size]),
                             torch.zeros([self.args.batch_size,
@@ -621,23 +623,32 @@ class Parser(nn.Module):
         Returns:
             A list of `DecodeHypothesis`, each representing an AST
         """
-
+        # print(f"Parser.parse {src_sent}", file=sys.stderr)
         args = self.args
         primitive_vocab = self.vocab.primitive
         T = torch.cuda if args.cuda else torch
 
-        src_sent_var = nn_utils.to_input_variable([src_sent], self.vocab.source, cuda=args.cuda, training=False)
+        src_sent_var = nn_utils.to_input_variable([src_sent], self.vocab.source, 
+                                                  cuda=args.cuda, training=False)
 
         # Variable(1, src_sent_len, hidden_size * 2)
         src_encodings, (_, last_cell) = self.encode(src_sent_var, [len(src_sent)])
         # (1, src_sent_len, hidden_size)
         src_encodings_att_linear = self.att_src_linear(src_encodings)
 
-        dec_init_vec = self.init_decoder_state(last_cell)
+        if self.args.encoder == 'bert':
+            # print(f"Parser.parse src_encodings.shape: {src_encodings.shape}",
+            #       file=sys.stderr)
+            dec_init_vec = (torch.zeros([src_encodings.size(0),
+                                         self.args.batch_size]),
+                            torch.zeros([src_encodings.size(0),
+                                         self.args.batch_size]))
+        elif self.args.encoder == 'lstm':
+            dec_init_vec = self.init_decoder_state(last_cell)
         if args.lstm == 'parent_feed':
-            h_tm1 = dec_init_vec[0], dec_init_vec[1], \
-                    Variable(self.new_tensor(args.hidden_size).zero_()), \
-                    Variable(self.new_tensor(args.hidden_size).zero_())
+            h_tm1 = (dec_init_vec[0], dec_init_vec[1], 
+                    Variable(self.new_tensor(args.hidden_size).zero_()), 
+                    Variable(self.new_tensor(args.hidden_size).zero_()))
         else:
             h_tm1 = dec_init_vec
 
@@ -667,7 +678,8 @@ class Parser(nn.Module):
 
             if t == 0:
                 with torch.no_grad():
-                    x = Variable(self.new_tensor(1, self.decoder_lstm.input_size).zero_())
+                    # Replace 1 by args.batch_size ???
+                    x = Variable(self.new_tensor(src_encodings.size(0), self.decoder_lstm.input_size).zero_())
                 if args.no_parent_field_type_embed is False:
                     offset = args.action_embed_size  # prev_action
                     offset += args.att_vec_size * (not args.no_input_feed)
@@ -696,6 +708,9 @@ class Parser(nn.Module):
 
                 inputs = [a_tm1_embeds]
                 if args.no_input_feed is False:
+                    inputs.append(att_tm1)
+                    # TODO cheating: with BERT encoder, we got a difference of 512 between x and decoder_lstm input size. see assert below. The two append below avoid the crash.
+                    inputs.append(att_tm1)
                     inputs.append(att_tm1)
                 if args.no_parent_production_embed is False:
                     # frontier production
@@ -806,7 +821,7 @@ class Parser(nn.Module):
 
                         if args.no_copy is False and len(hyp_unk_copy_info) > 0:
                             unk_i = np.array([x['copy_prob'] for x in hyp_unk_copy_info]).argmax()
-                            token = hyp_unk_copy_info[unk_i]['token']
+                            token = primitive_vocab.id2word[hyp_unk_copy_info[unk_i]['token']]
                             primitive_prob[hyp_id, primitive_vocab.unk_id] = hyp_unk_copy_info[unk_i]['copy_prob']
                             gentoken_new_hyp_unks.append(token)
 
