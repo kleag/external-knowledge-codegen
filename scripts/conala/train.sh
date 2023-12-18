@@ -41,8 +41,7 @@ echo "**** Writing results to ${logs_dir}/${model_name}.log ****"
 echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
 #     -m pdb \
-python \
-    -u \
+python -u  \
     exp.py \
     ${cuda} \
     --data_path ${data_dir} \
