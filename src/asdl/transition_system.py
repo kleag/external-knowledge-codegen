@@ -1,5 +1,8 @@
 # coding=utf-8
 
+import sys
+from asdl.hypothesis import Hypothesis
+
 
 class Action(object):
     pass
@@ -94,6 +97,39 @@ class TransitionSystem(object):
             actions.extend(field_actions)
 
         return actions
+
+    def get_hypothesis(self, actions):
+        hyp = Hypothesis()
+        for t, action in enumerate(actions):
+            valid_continuating_types = self.get_valid_continuation_types(hyp)
+            if action.__class__ not in valid_continuating_types:
+                print(f"Error: Valid continuation types are "
+                      f"{valid_continuating_types} "
+                      f"but current action class is {action.__class__}",
+                      file=sys.stderr)
+                assert action.__class__ in valid_continuating_types
+            if isinstance(action, ApplyRuleAction):
+                valid_continuating_productions = self.get_valid_continuating_productions(hyp)
+                if (action.production not in valid_continuating_productions
+                        and hyp.frontier_node):
+                    raise Exception(
+                        f"{bcolors.BLUE}{action.production}"
+                        f"{bcolors.ENDC} should be in {bcolors.OK}"
+                        f"{self.grammar[hyp.frontier_field.type] if hyp.frontier_field else ''}"
+                        f"{bcolors.ENDC}")
+                assert action.production in valid_continuating_productions
+            p_t = -1
+            f_t = None
+            if hyp.frontier_node:
+                p_t = hyp.frontier_node.created_time
+                f_t = hyp.frontier_field.field.__repr__(plain=True)
+            if debug:
+                print(f'\t[{t}] {action}, frontier field: {f_t}, '
+                        f'parent: {p_t}')
+            hyp = hyp.clone_and_apply_action(action)
+
+        assert hyp.frontier_node is None and hyp.frontier_field is None
+        return hyp
 
     def tokenize_code(self, code, mode):
         raise NotImplementedError

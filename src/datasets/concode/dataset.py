@@ -228,33 +228,7 @@ def preprocess_dataset(file_path, transition_system, name='train',
             tgt_actions = transition_system.get_actions(tgt_ast)
 
             # sanity check
-            hyp = Hypothesis()
-            for t, action in enumerate(tgt_actions):
-                valid_continuating_types = transition_system.get_valid_continuation_types(hyp)
-                if action.__class__ not in valid_continuating_types:
-                    print(f"Error: Valid continuation types are {valid_continuating_types} "
-                          f"but current action class is {action.__class__}",
-                          file=sys.stderr)
-                    assert action.__class__ in valid_continuating_types
-                if isinstance(action, ApplyRuleAction):
-                    valid_continuating_productions = transition_system.get_valid_continuating_productions(hyp)
-                    if action.production not in valid_continuating_productions and hyp.frontier_node:
-                        raise Exception(f"{bcolors.BLUE}{action.production}"
-                                        f"{bcolors.ENDC} should be in {bcolors.GREEN}"
-                                        f"{grammar[hyp.frontier_field.type] if hyp.frontier_field else ''}"
-                                        f"{bcolors.ENDC}")
-                        assert action.production in valid_continuating_productions
-                p_t = -1
-                f_t = None
-                if hyp.frontier_node:
-                    p_t = hyp.frontier_node.created_time
-                    f_t = hyp.frontier_field.field.__repr__(plain=True)
-                if debug:
-                    print(f'\t[{t}] {action}, frontier field: {f_t}, '
-                          f'parent: {p_t}')
-                hyp = hyp.clone_and_apply_action(action)
-
-            assert hyp.frontier_node is None and hyp.frontier_field is None
+            hyp = transition_system.get_hypothesis(tgt_actions)
             lang_ast = asdl_ast_to_java_ast(hyp.tree, transition_system.grammar)
             code_from_hyp = jastor.to_source(lang_ast).strip()
 

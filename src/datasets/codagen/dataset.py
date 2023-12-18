@@ -1,6 +1,4 @@
 import argparse
-import ast
-import astor
 import errno
 import json
 import os
@@ -10,24 +8,24 @@ import sys
 import numpy as np
 
 from asdl.hypothesis import *
-from asdl.lang.py3.py3_transition_system import (
-    python_ast_to_asdl_ast,
-    asdl_ast_to_python_ast,
-    Python3TransitionSystem)
 from asdl.transition_system import *
 from components.action_info import get_action_infos
 from components.dataset import Example
 from components.vocab import Vocab, VocabEntry
-from datasets.conala.evaluator import ConalaEvaluator
-from datasets.conala.util import (compare_ast,
+from datasets.codagen.evaluator import CodagenEvaluator
+from datasets.codagen.util import (compare_ast,
                                   canonicalize_intent, canonicalize_code,
                                   decanonicalize_code, tokenize_intent)
 
-# assert astor.__version__ == '0.8.1'
-assert astor.__version__ == '0.7.1'
+import cppastor
+import cpplang
+import istarmap
+from asdl.lang.cpp.cpp_transition_system import (asdl_ast_to_cpp_ast,
+                                             cpp_ast_to_asdl_ast)
+from asdl.hypothesis import *
 
 
-def preprocess_conala_dataset(train_file: str,
+def preprocess_codagen_dataset(train_file: str,
                               test_file: str,
                               grammar_file: str,
                               tokenizer: str,
@@ -42,7 +40,7 @@ def preprocess_conala_dataset(train_file: str,
                               num_dev: int = 200,
                               debug: bool = False,
                               start_at: int = 0,
-                              out_dir: str = 'data/conala'):
+                              out_dir: str = 'data/codagen'):
     np.random.seed(1234)
     try:
         os.makedirs(out_dir)
@@ -52,7 +50,7 @@ def preprocess_conala_dataset(train_file: str,
 
     asdl_text = open(grammar_file).read()
     grammar = ASDLGrammar.from_text(asdl_text)
-    transition_system = Python3TransitionSystem(grammar)
+    transition_system = CppTransitionSystem(grammar)
 
     print('process gold training data...')
     train_examples = preprocess_dataset(train_file,
@@ -149,8 +147,58 @@ def preprocess_conala_dataset(train_file: str,
     pickle.dump(vocab, open(os.path.join(out_dir, vocab_name), 'wb'))
 
 
+def get_example_actions(example_dict: dict,
+                       transition_system: CppTransitionSystem,
+                       cpp_code: str,
+                       file_path: str,
+                       compile_command: str):
+    # logger.debug("codagen/dataset get_example_actions")
+    snippet = example_dict['canonical_snippet']
+
+    cpp_ast_reconstructed = ast.parse(snippet)
+    cpp_ast = cpplang.parse.parse(s=snippet, filepath=filepath,
+                                    compile_command=compile_command)
+    canonical_code = cppastor.to_source(cpp_ast).strip()
+    # if debug:
+    #     print(f"canonical_code:\n{canonical_code}", file=sys.stderr)
+    asdl_ast = cpp_ast_to_asdl_ast(cpp_ast, transition_system.grammar)
+    tgt_actions = transition_system.get_actions(asdl_ast)
+
+    # sanity check
+    hyp = transition_system.get_hypothesis(tgt_actions)
+    cpp_ast_reconstructed = asdl_ast_to_cpp_ast(asdl_ast,
+                                                transition_system.grammar)
+    cpp_ast_reconstructed = asdl_ast_to_cpp_ast(hyp.tree,
+                                                transition_system.grammar)
+    code_from_hyp = cppastor.to_source(cpp_ast_reconstructed).strip()
+
+    hyp.code = code_from_hyp
+    # if debug:
+    #     print(f"code_from_hyp:\n{code_from_hyp}", file=sys.stderr)
+    assert code_from_hyp == canonical_code
+
+    decanonicalized_code_from_hyp = decanonicalize_code(
+        code_from_hyp, example_dict['slot_map'])
+    cpp_ast = cpplang.parse.parse(s=cpp_code, filepath=filepath,
+                                    compile_command=compile_command)
+    decanonicalized_code_from_hyp_ast = cpplang.parse.parse(
+        s=decanonicalized_code_from_hyp, filepath=filepath,
+        compile_command=compile_command)
+
+    assert compare_ast(cpp_ast, decanonicalized_code_from_hyp_ast)
+
+    assert transition_system.compare_ast(
+        transition_system.surface_code_to_ast(
+            decanonicalized_code_from_hyp),
+        transition_system.surface_code_to_ast(example_json['snippet']))
+
+    tgt_action_infos = get_action_infos(example_dict['intent_tokens'],
+                                        tgt_actions)
+    return tgt_action_infos
+
+
 def preprocess_dataset(file_path: str,
-                       transition_system: Python3TransitionSystem,
+                       transition_system: CppTransitionSystem,
                        tokenizer: str,
                        name: str = 'train',
                        num_examples: int = None,
@@ -165,7 +213,7 @@ def preprocess_dataset(file_path: str,
     if num_examples:
         dataset = dataset[:num_examples]
     examples = []
-    evaluator = ConalaEvaluator(transition_system)
+    evaluator = CodagenEvaluator(transition_system)
     f = open(file_path + '.debug', 'w')
     skipped_list = []
     for i, example_json in enumerate(dataset):
@@ -181,34 +229,11 @@ def preprocess_dataset(file_path: str,
             example_dict = preprocess_example(example_json,
                                               tokenizer,
                                               rewritten=rewritten)
-
-            snippet = example_dict['canonical_snippet']
-            # if debug:
-            #     print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
-
-            lang_ast = ast.parse(snippet)
-            canonical_code = astor.to_source(lang_ast).strip()
-            if debug:
-                print(f"canonical_code:\n{canonical_code}", file=sys.stderr)
-            tgt_ast = python_ast_to_asdl_ast(lang_ast, transition_system.grammar)
-            tgt_actions = transition_system.get_actions(tgt_ast)
-
-            # sanity check
-            hyp = transition_system.get_hypothesis(tgt_actions)
-            lang_ast = asdl_ast_to_python_ast(hyp.tree, transition_system.grammar)
-            code_from_hyp = astor.to_source(lang_ast).strip()
-
-            hyp.code = code_from_hyp
-            if debug:
-                print(f"code_from_hyp:\n{code_from_hyp}", file=sys.stderr)
-            assert code_from_hyp == canonical_code
-
-            decanonicalized_code_from_hyp = decanonicalize_code(code_from_hyp, example_dict['slot_map'])
-            assert compare_ast(ast.parse(example_json['snippet']), ast.parse(decanonicalized_code_from_hyp))
-            assert transition_system.compare_ast(transition_system.surface_code_to_ast(decanonicalized_code_from_hyp),
-                                                 transition_system.surface_code_to_ast(example_json['snippet']))
-
-            tgt_action_infos = get_action_infos(example_dict['intent_tokens'], tgt_actions)
+            tgt_action_infos = get_example_actions(example_dict,
+                                                   transition_system,
+                                                   example_json['snippet'],
+                                                   file_path: str,
+                                                   compile_command)
         except (AssertionError, SyntaxError, ValueError, OverflowError) as e:
             skipped_list.append(example_json['question_id'])
             continue
@@ -216,7 +241,7 @@ def preprocess_dataset(file_path: str,
                           src_sent=example_dict['intent_tokens'],
                           tgt_actions=tgt_action_infos,
                           tgt_code=canonical_code,
-                          tgt_ast=tgt_ast,
+                          tgt_ast=asdl_ast,
                           meta=dict(example_dict=example_json,
                                     slot_map=example_dict['slot_map']))
         assert evaluator.is_hyp_correct(example, hyp)
@@ -259,8 +284,8 @@ def preprocess_example(example_json: str,
     intent_tokens = tokenize_intent(canonical_intent, tokenizer)
     decanonical_snippet = decanonicalize_code(canonical_snippet, slot_map)
 
-    reconstructed_snippet = astor.to_source(ast.parse(snippet)).strip()
-    reconstructed_decanonical_snippet = astor.to_source(ast.parse(decanonical_snippet)).strip()
+    reconstructed_snippet = cppastor.to_source(ast.parse(snippet)).strip()
+    reconstructed_decanonical_snippet = cppastor.to_source(ast.parse(decanonical_snippet)).strip()
 
     assert compare_ast(ast.parse(reconstructed_snippet), ast.parse(reconstructed_decanonical_snippet))
 
@@ -274,20 +299,20 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     # ### General configuration ####
     arg_parser.add_argument('--train', type=str, help='Path to train file',
-                            default='data/conala/conala-train.json')
+                            default='data/codagen/codagen-train.json')
     arg_parser.add_argument('--test', type=str, help='Path to test file',
-                            default='data/conala/conala-test.json')
+                            default='data/codagen/codagen-test.json')
     arg_parser.add_argument('--mined', type=str, help='Path to mined file')
     arg_parser.add_argument('--grammar', type=str,
                             help='Path to language grammar',
                             default='src/asdl/lang/py3/py3_asdl.simplified.txt')
-    arg_parser.add_argument('--out_dir', type=str, default='data/conala',
+    arg_parser.add_argument('--out-dir', type=str, default='data/codagen',
                             help='Path to output file')
     arg_parser.add_argument('--freq', type=int, default=3,
                             help='minimum frequency of tokens')
     arg_parser.add_argument('--vocabsize', type=int, default=20000,
                             help='First k number from pretrain file')
-    arg_parser.add_argument('--include_api', type=str,
+    arg_parser.add_argument('--include-api', type=str,
                             help='Path to apidocs file')
     arg_parser.add_argument('-r', '--no_rewritten', action='store_false',
                             help='If set, will not use the manually rewritten '
@@ -295,19 +320,18 @@ if __name__ == '__main__':
     arg_parser.add_argument('--tokenizer', type=str, required=True,
                             choices=['nltk', 'bert', 'spacy', 'lima'],
                             help='The tokenizer to use.')
-    arg_parser.add_argument('--num_examples', type=int, default=0,
+    arg_parser.add_argument('--num-examples', type=int, default=0,
                             help='Max number of examples to use in any set')
-    arg_parser.add_argument('--num_dev', type=int, default=200,
+    arg_parser.add_argument('--num-dev', type=int, default=200,
                             help='Max number of dev examples to use')
-    arg_parser.add_argument('--num_mined', type=int, default=0,
+    arg_parser.add_argument('--num-mined', type=int, default=0,
                             help='First k number from mined file')
     arg_parser.add_argument('-d', '--debug', action='store_true',
                             help='Run in debug mode if set.')
     args = arg_parser.parse_args()
 
     print(f"tokenizer: {args.tokenizer}", file=sys.stderr)
-    # the json files can be downloaded from http://conala-corpus.github.io
-    preprocess_conala_dataset(train_file=args.train,
+    preprocess_codagen_dataset(train_file=args.train,
                               test_file=args.test,
                               mined_data_file=args.mined,
                               api_data_file=args.include_api,
