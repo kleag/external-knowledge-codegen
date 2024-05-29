@@ -4,7 +4,7 @@ import json
 import os
 import pickle
 import sys
-
+import tqdm
 import numpy as np
 
 from asdl.hypothesis import *
@@ -194,15 +194,9 @@ def preprocess_dataset(file_path, transition_system, name='train',
     evaluator = ConcodeEvaluator(transition_system)
     f = open(file_path + '.debug', 'w')
     skipped_list = []
-    for i, example_json in enumerate(dataset):
+    for i, example_json in enumerate(tqdm.tqdm(dataset)):
         if i < start_at:
             continue
-        if debug:
-            print(f"preprocess_dataset example n°{i+1}/{len(dataset)}",
-                  end='\n', file=sys.stderr)
-        else:
-            print(f">>>>>>>> preprocess_dataset example n°{i+1}/{len(dataset)}",
-                  end='\r', file=sys.stderr)
         try:
             example_dict = preprocess_example(example_json,
                                               rewritten=rewritten)

@@ -2,7 +2,7 @@
 
 from .asdl import *
 from .asdl_ast import AbstractSyntaxTree
-from .transition_system import *
+from .actions import *
 
 
 class Hypothesis(object):

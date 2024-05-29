@@ -1,51 +1,14 @@
 # coding=utf-8
 
 import sys
-from asdl.hypothesis import Hypothesis
+from .hypothesis import Hypothesis
 
-
-class Action(object):
-    pass
-
-
-class ApplyRuleAction(Action):
-    def __init__(self, production):
-        self.production = production
-
-    def __hash__(self):
-        return hash(self.production)
-
-    def __eq__(self, other):
-        return (isinstance(other, ApplyRuleAction)
-                and self.production == other.production)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return 'ApplyRule[%s]' % self.production.__repr__()
-
-
-class GenTokenAction(Action):
-    def __init__(self, token):
-        assert(type(token) == str)
-        self.token = token
-
-    def is_stop_signal(self):
-        return self.token == '</primitive>'
-
-    def __repr__(self):
-        return 'GenToken[%s]' % self.token
-
-
-class ReduceAction(Action):
-    def __repr__(self):
-        return 'Reduce'
-
+from .actions import ApplyRuleAction, ReduceAction, GenTokenAction
 
 class TransitionSystem(object):
-    def __init__(self, grammar):
+    def __init__(self, grammar, debug=False):
         self.grammar = grammar
+        self.debug = debug
 
     def get_actions(self, asdl_ast):
         """
@@ -123,7 +86,7 @@ class TransitionSystem(object):
             if hyp.frontier_node:
                 p_t = hyp.frontier_node.created_time
                 f_t = hyp.frontier_field.field.__repr__(plain=True)
-            if debug:
+            if self.debug:
                 print(f'\t[{t}] {action}, frontier field: {f_t}, '
                         f'parent: {p_t}')
             hyp = hyp.clone_and_apply_action(action)

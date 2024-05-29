@@ -56,8 +56,8 @@ python -u exp.py \
     --max_epoch ${max_epoch} \
     --beam_size ${beam_size} \
     --log_every 50 \
-    --save_to saved_models/concode/${model_name} \
     --save_decode_to decodes/concode/${model_name}.decode \
     --root_production "typedeclaration,MethodDeclaration" 2>&1 | tee logs/concode/${model_name}.log
+#     --save_to saved_models/concode/${model_name} \
 
 . scripts/concode/test.sh saved_models/concode/${model_name}.bin 2>&1 | tee -a logs/concode/${model_name}.log

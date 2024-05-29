@@ -1,5 +1,6 @@
 # coding=utf-8
-from asdl.transition_system import TransitionSystem, GenTokenAction
+from asdl.transition_system import TransitionSystem
+from asdl.actions import GenTokenAction
 
 try:
     from cStringIO import StringIO

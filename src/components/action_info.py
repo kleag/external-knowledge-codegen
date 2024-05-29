@@ -1,6 +1,6 @@
 # coding=utf-8
 from asdl.hypothesis import Hypothesis
-from asdl.transition_system import ApplyRuleAction, GenTokenAction
+from asdl.actions import ApplyRuleAction, GenTokenAction
 
 
 class ActionInfo(object):

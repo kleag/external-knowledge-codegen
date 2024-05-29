@@ -1,6 +1,7 @@
 # coding=utf-8
 
-from asdl.transition_system import TransitionSystem, GenTokenAction, ReduceAction
+from asdl.transition_system import TransitionSystem
+from asdl.actions import GenTokenAction, ReduceAction
 
 from .logical_form import ast_to_logical_form, logical_form_to_ast, Node, parse_lambda_expr
 

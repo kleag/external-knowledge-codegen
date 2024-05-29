@@ -8,7 +8,8 @@ from asdl.lang.java import jastor
 from asdl.lang.java.java_asdl_helper import (asdl_ast_to_java_ast,
                                              java_ast_to_asdl_ast)
 from asdl.lang.java.java_utils import tokenize_code
-from asdl.transition_system import TransitionSystem, GenTokenAction
+from asdl.transition_system import TransitionSystem
+from asdl.actions import GenTokenAction
 
 from common.registerable import Registrable
 

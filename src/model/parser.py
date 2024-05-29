@@ -19,8 +19,9 @@ from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 from transformers import BertTokenizer
 
 
-from asdl.hypothesis import Hypothesis, GenTokenAction
-from asdl.transition_system import ApplyRuleAction, ReduceAction, Action
+from asdl.hypothesis import Hypothesis
+from asdl.transition_system import GenTokenAction
+from asdl.actions import ApplyRuleAction, ReduceAction, Action
 from common.registerable import Registrable
 from components.decode_hypothesis import DecodeHypothesis
 from components.action_info import ActionInfo
@@ -451,6 +452,8 @@ class Parser(nn.Module):
         """
 
         # h_t: (batch_size, hidden_size)
+        print(f"Parser.step {x.shape}, {h_tm1[0].shape}, {h_tm1[1].shape}",
+              file=sys.stderr)
         h_t, cell_t = self.decoder_lstm(x, h_tm1)
 
         ctx_t, alpha_t = nn_utils.dot_prod_attention(h_t,

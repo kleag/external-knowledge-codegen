@@ -168,7 +168,8 @@ def train(args):
         is_better = False
         if args.dev_file:
             if epoch % args.valid_every_epoch == 0:
-                print(f'[Epoch {epoch}] begin validation', file=sys.stderr)
+                print(f'[Epoch {epoch}] train begin validation',
+                      file=sys.stderr)
                 eval_start = time.time()
                 eval_results = evaluation.evaluate(
                   dev_set.examples, model, evaluator, args,
@@ -459,7 +460,8 @@ def train_rerank_feature(args):
               file=sys.stderr)
 
         # perform validation
-        print(f'[Epoch %d] begin validation' % epoch, file=sys.stderr)
+        print(f'[Epoch {epoch}] train_rerank_feature begin validation',
+              file=sys.stderr)
         eval_start = time.time()
         # evaluate dev_score
         dev_acc = (evaluate_paraphrase_acc()
