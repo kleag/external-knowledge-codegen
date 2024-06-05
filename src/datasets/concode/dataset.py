@@ -58,11 +58,10 @@ def preprocess_concode_dataset(train_file,
     train_examples = preprocess_dataset(train_file,
                                         name='train',
                                         transition_system=transition_system,
-                                        num_examples=num_examples,
+                                        num_examples=1000,
                                         debug=debug,
                                         start_at=start_at,
                                         rewritten=rewritten)
-
     full_train_examples = train_examples[:]
     np.random.shuffle(train_examples)
 
@@ -110,9 +109,10 @@ def preprocess_concode_dataset(train_file,
     train_examples += mined_examples
     train_examples += api_examples
     print(f'{len(train_examples)} training instances', file=sys.stderr)
-    print(f'{len(dev_examples)} dev instances', file=sys.stderr)
+    # print(f'{len(dev_examples)} dev instances', file=sys.stderr)
 
     print('process testing data...', flush=True)
+    
     test_examples = preprocess_dataset(test_file, name='test',
                                        transition_system=transition_system,
                                        num_examples=num_examples,
@@ -150,11 +150,11 @@ def preprocess_concode_dataset(train_file,
     print('generated vocabulary %s' % repr(vocab), file=sys.stderr)
 
     action_lens = [len(e.tgt_actions) for e in train_examples]
-    print('Max action len: %d' % max(action_lens), file=sys.stderr)
-    print('Avg action len: %d' % np.average(action_lens), file=sys.stderr)
-    print(f'Actions larger than 100: '
-          f'{len(list(filter(lambda x: x > 100, action_lens)))}',
-          file=sys.stderr)
+    # print('Max action len: %d' % max(action_lens), file=sys.stderr)
+    # print('Avg action len: %d' % np.average(action_lens), file=sys.stderr)
+    # print(f'Actions larger than 100: '
+    #       f'{len(list(filter(lambda x: x > 100, action_lens)))}',
+    #       file=sys.stderr)
 
     pickle.dump(train_examples,
                 open(os.path.join(out_dir,
@@ -209,9 +209,16 @@ def preprocess_dataset(file_path, transition_system, name='train',
             snippet = example_dict['canonical_snippet']
             if debug:
                 print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
+            
+            error_flag = False
             try:
                 lang_ast = javalang.parse.parse_member_declaration(snippet)
-            except JavaSyntaxError as e:
+            except javalang.tokenizer.LexerError as e:
+                error_flag = True
+                print("skipping lexer error "+str(e), file=sys.stderr)
+                continue
+            except javalang.parser.JavaSyntaxError as e:
+                print("°°°°°°°°°°°°°°°°°°°°°°°°°°°°")
                 print(f"Syntax error in canonical snippet below. Will try original one.",
                       file=sys.stderr)
                 print("------", file=sys.stderr)
@@ -220,7 +227,12 @@ def preprocess_dataset(file_path, transition_system, name='train',
                 snippet = example_dict['snippet']
                 if debug:
                     print(f"snippet:\n{snippet}", file=sys.stderr)
-                lang_ast = javalang.parse.parse_member_declaration(snippet)
+                # lang_ast = javalang.parse.parse_member_declaration(snippet)
+                error_flag = True
+            
+            if error_flag: continue
+            
+            
             canonical_code = jastor.to_source(lang_ast).strip()
             if debug:
                 print(f"canonical_code:\n{canonical_code}", file=sys.stderr)
@@ -278,7 +290,13 @@ def preprocess_dataset(file_path, transition_system, name='train',
             if debug:
                 print(f"example_json['snippet']:\n{example_json['snippet']}\n==========")
                 print(f"decanonicalized_code_from_hyp:\n{decanonicalized_code_from_hyp}\n==========")
-            assert compare_ast(parsed_snippet_ast, parsed_decanon_ast)
+            
+            try:
+                assert compare_ast(parsed_snippet_ast, parsed_decanon_ast)
+            except AssertionError as e:
+                print(e)
+                continue
+
             assert transition_system.compare_ast(surface_snippet_ast,
                                                  surface_decanon_ast)
 
@@ -287,6 +305,7 @@ def preprocess_dataset(file_path, transition_system, name='train',
         # except (AssertionError, JavaSyntaxError, ValueError, OverflowError)
         # as e:
         except () as e:
+            print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤$")
             print(f"Intercepting exception: {e} in:\n{snippet}",
                   file=sys.stderr)
             skipped_list.append(example_json['question_id'])

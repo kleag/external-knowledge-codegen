@@ -70,6 +70,7 @@ def train(args):
     optimizer = optimizer_cls(model.parameters(), lr=args.lr)
 
     # load in train/dev set
+    
     train_set = Dataset.from_bin_file(args.train_file)
 
     if args.dev_file:
@@ -110,9 +111,10 @@ def train(args):
 
         for batch_examples in train_set.batch_iter(batch_size=args.batch_size,
                                                    shuffle=True):
+            
             batch_examples = [
               e for e in batch_examples
-              if len(e.tgt_actions) <= args.decode_max_time_step]
+              if len(e.tgt_actions) <= 9999999999]
             train_iter += 1
             optimizer.zero_grad()
 
@@ -547,7 +549,7 @@ def interactive_mode(args):
             # print(hyp.tree.to_string())
             # print('Actions:')
             # for action_t in hyp.action_infos:
-            #     print(action_t.__repr__(True))
+            #     print(action_t.__repr__(T 
 
 
 def train_reranker_and_test(args):

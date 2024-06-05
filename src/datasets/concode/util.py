@@ -117,21 +117,30 @@ def canonicalize_intent(intent):
     # data to slot_map
     if "concode_field_sep" in intent:
         field_id = 0
+        # print("intent", intent)
         intent, fields = intent.split("concode_field_sep", 1)
         fields = fields.strip().split("concode_field_sep")
         for field in fields:
-            field_type, field_name = field.strip().split("concode_elem_sep")
-            field_type = field_type.strip()
-            field_name = field_name.strip()
-            slot_name = 'field_%d' % field_id
-            field_id += 1
-            slot_type = 'field'
-
-            slot_map[slot_name] = {
-                'value': field_name.strip().encode().decode('unicode_escape',
-                                                            'ignore'),
-                'quote': field_type,
-                'type': slot_type}
+            # print("field")
+            # print(field)
+            # print(field.strip())
+            # print(field.strip().split("concode_elem_sep"))
+            concode_elems = field.strip().split("concode_elem_sep")
+            
+            for concode_elem in concode_elems:
+                concode_elem = concode_elem.strip()
+                parts = concode_elem.split(" ")
+                field_type, field_name = " ".join(parts[:-1]), parts[-1]
+                field_type = field_type.strip()
+                field_name = field_name.strip()
+                slot_name = f'field_{field_id}'
+                slot_type = 'field'
+                field_id += 1
+                slot_map[slot_name] = {
+                    'value': field_name.strip().encode().decode('unicode_escape',
+                                                                'ignore'),
+                    'quote': field_type,
+                    'type': slot_type}
             #print(f"slot_map[{slot_name}] = {slot_map[slot_name]}",
                   #file=sys.stderr)
 
@@ -167,6 +176,7 @@ def canonicalize_code(code, slot_map):
     string2slot = {x['value']: slot_name
                    for slot_name, x in list(slot_map.items())}
 
+    
     java_ast = javalang.parse.parse_member_declaration(code)
 
     replace_identifiers_in_ast(java_ast, string2slot)

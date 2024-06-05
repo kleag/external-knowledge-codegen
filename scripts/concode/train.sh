@@ -3,6 +3,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+
 seed=0
 data_path="/home/gael/Projets/Decoder-ICT-16/recycle_bert_data/data_concode_pretok"
 vocab="data/concode/vocab.src_freq3.code_freq3.bin"
@@ -16,7 +17,7 @@ field_embed_size=64
 type_embed_size=64
 lr=0.001
 lr_decay=0.5
-batch_size=32
+batch_size=1
 max_epoch=80
 beam_size=15
 encoder="lstm" # lstm or bert
@@ -29,7 +30,7 @@ mkdir -p logs/concode
 echo commit hash: `git rev-parse HEAD` > logs/concode/${model_name}.log
 
 #     --cuda \
-python -u exp.py \
+python -u -m debugpy --wait-for-client --listen 5678 exp.py \
     --lang java \
     --seed ${seed} \
     --mode train \

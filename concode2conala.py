@@ -61,11 +61,11 @@ import argparse
 
 
 def text_from_concode_nl(concode_nl: list):
-    return " ".join(concode_nl)
+    return "".join(concode_nl)
 
 
 def code_from_concode_nl(concode_code: list):
-    return " ".join(concode_code)
+    return "".join(concode_code)
 
 
 if __name__ == '__main__':
