@@ -26,7 +26,11 @@ model_name=concode.${lstm}.hidden${hidden_size}.embed${embed_size}.action${actio
 
 echo "**** Writing results to logs/concode/${model_name}.log ****"
 mkdir -p logs/concode
-echo commit hash: `git rev-parse HEAD` > logs/concode/${model_name}.log
+#echo commit hash: `git rev-parse HEAD` > logs/concode/${model_name}.log
+# The line below supposes that the current branch is master. It is used when
+# the cluster node running the script does not have the git program. Otherwise,
+# the line above should be used
+echo commit hash: `cat .git/refs/heads/master` > logs/concode/${model_name}.log
 
 #     --cuda \
 python -u exp.py \

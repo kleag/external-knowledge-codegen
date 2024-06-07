@@ -23,12 +23,12 @@
 
 # Temps maximal d'execution du job ci dessous
 # d-hh:mm:ss
-#SBATCH --time=7-0:00:00
+#SBATCH --time=1-0:00:00
 
 # Taille de la memoire exprime en Mega octets max=190000 ici 50G
 #SBATCH --mem=20G
 
-#SBATCH --exclude=node5
+####SBATCH --exclude=node5
 ####SBATCH --nodelist=node6,node7
 
 #set -o nounset
@@ -75,7 +75,7 @@ cd /home/gael/Projets/Decoder/external-knowledge-codegen
 
 # run script
 echo 'Training'
-${EXECUTOR} scripts/concode/train.sh 
+${EXECUTOR} scripts/concode/train.sh
 #echo 'Fine tuning'
 #${EXECUTOR} scripts/conala/finetune_retrieved_distsmpl.sh 100000 snippet_count100k_topk1_temp2 saved_models/conala/retdistsmpl.dr0.3.lr0.001.lr_de0.5.lr_da15.beam15.vocab.src_freq3.code_freq3.mined_100000.goldmine_snippet_count100k_topk1_temp2.bin.pre_100000_goldmine_snippet_count100k_topk1_temp2.bin.seed0.bin
 

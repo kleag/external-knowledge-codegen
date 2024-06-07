@@ -1,9 +1,10 @@
 # coding=utf-8
 
 import sys
-from .hypothesis import Hypothesis
+from asdl.actions import (ApplyRuleAction, GenTokenAction, ReduceAction)
+from asdl.hypothesis import Hypothesis
 
-from .actions import ApplyRuleAction, ReduceAction, GenTokenAction
+debug = True
 
 class TransitionSystem(object):
     def __init__(self, grammar, debug=False):

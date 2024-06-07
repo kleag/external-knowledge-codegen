@@ -348,12 +348,50 @@ static llvm::json::Object fullType(const ASTContext &Ctx, const Type * Ty) {
     Inner.push_back(fullType(Ctx, MemberPointerTy->getPointeeType()));
     Ret["inner"] = llvm::json::Value(std::move(Inner));
   }
+  else if(auto* UnaryTransformTy = dyn_cast<UnaryTransformType>(Ty)) {
+    llvm::json::Array Inner;
+    Inner.push_back(fullType(Ctx, UnaryTransformTy->getUnderlyingType()));
+    Inner.push_back(fullType(Ctx, UnaryTransformTy->getBaseType()));
+    Ret["inner"] = llvm::json::Value(std::move(Inner));
+  }
   else if(auto* UnresolvedUsingTy = dyn_cast<UnresolvedUsingType>(Ty)) {
     Ret["name"] = UnresolvedUsingTy->getDecl()->getName();
   }
   else {
     Ty->dump();
     assert(false && "unsupported type");
+    /////// Unhandled types:
+    // AdjustedType
+    // ArrayType
+    // AtomicType
+    // AttributedType
+    // BTFTagAttributedType
+    // BlockPointerType
+    // ConstantMatrixType
+    // DeducedTemplateSpecializationType
+    // DeducedType
+    // DependentAddressSpaceType
+    // DependentBitIntType
+    // DependentSizedExtVectorType
+    // DependentSizedMatrixType
+    // DependentTemplateSpecializationType
+    // DependentVectorType
+    // ExtVectorType
+    // FunctionType
+    // LValueReferenceType
+    // LocInfoType
+    // MacroQualifiedType
+    // MatrixType
+    // ObjCInterfaceType
+    // ObjCObjectPointerType
+    // ObjCObjectType
+    // ObjCTypeParamType
+    // PipeType
+    // RValueReferenceType
+    // SubstTemplateTypeParmPackType
+    // TagType
+    // TypeOfType
+
   }
   return Ret;
 }

@@ -18,21 +18,20 @@ class ActionInfo(object):
         self.src_token_position = -1
 
     def __repr__(self, verbose=False):
-        repr_str = '%s (t=%d, p_t=%d, frontier_field=%s)' % (repr(self.action),
-                                                         self.t,
-                                                         self.parent_t,
-                                                         self.frontier_field.__repr__(True) if self.frontier_field else 'None')
+        ffr = (self.frontier_field.__repr__(True)
+               if self.frontier_field else "None")
+        repr_str = (f'{repr(self.action)} (t={self.t}, p_t={self.parent_t}, '
+                    f'frontier_field={ffr})')
 
         if verbose:
             verbose_repr = 'action_prob=%.4f, ' % self.action_prob
             if isinstance(self.action, GenTokenAction):
-                verbose_repr += 'in_vocab=%s, ' \
-                                'gen_copy_switch=%s, ' \
-                                'p(gen)=%s, p(copy)=%s, ' \
-                                'has_copy=%s, copy_pos=%s' % (self.in_vocab,
-                                                              self.gen_copy_switch,
-                                                              self.gen_token_prob, self.copy_token_prob,
-                                                              self.copy_from_src, self.src_token_position)
+                verbose_repr += (f'in_vocab={self.in_vocab}, '
+                                f'gen_copy_switch={self.gen_copy_switch}, '
+                                f'p(gen)={self.gen_token_prob}, '
+                                f'p(copy)={self.copy_token_prob}, '
+                                f'has_copy={self.copy_from_src}, '
+                                f'copy_pos={self.src_token_position}')
 
             repr_str += '\n' + verbose_repr
 
@@ -56,7 +55,8 @@ def get_action_infos(src_query, tgt_actions, force_copy=False):
                 action_info.copy_from_src = True
                 action_info.src_token_position = tok_src_idx
             except ValueError:
-                if force_copy: raise ValueError('cannot copy primitive token %s from source' % action.token)
+                if force_copy: raise ValueError(
+                    f'cannot copy primitive token {action.token} from source')
 
         hyp.apply_action(action)
         action_infos.append(action_info)

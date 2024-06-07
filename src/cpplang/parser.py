@@ -156,6 +156,8 @@ class Parser(object):
         Initialize the parser. Either cpp_code or compile_command must be not None.
         Depending on which one, a different init function is called
         """
+        assert ((compile_command is not None and cpp_code is None and filepath is None)or
+                (compile_command is None and cpp_code is not None and filepath is not None))
         self.type_informations = {}
         self.decl_informations = {}
         self.expr_informations = {}
@@ -165,6 +167,7 @@ class Parser(object):
         self.stack = []
         self.debug = False
         self.anonymous_types = {}
+        self.tu = {}
         if cpp_code is not None:
             self._init_direct(cpp_code, filepath)
         elif compile_command is not None:
@@ -175,6 +178,7 @@ class Parser(object):
         Initialize the parser using the command given by the external
         compile_commands.json database
         """
+        # print(f"Parser._init_compile_commands", file=sys.stderr)
         workdir = compile_command["directory"]
         if "command" in compile_command:
             # split he command into its arguments
@@ -299,7 +303,9 @@ class Parser(object):
 # ---- Debug control ----
 
     def set_debug(self, debug=True):
+        global ENABLE_DEBUG_SUPPORT
         self.debug = debug
+        ENABLE_DEBUG_SUPPORT = self.debug
 
 # ------------------------------------------------------------------------------
 # ---- Parsing entry point ----

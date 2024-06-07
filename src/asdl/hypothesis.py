@@ -1,8 +1,8 @@
 # coding=utf-8
 
-from .asdl import *
-from .asdl_ast import AbstractSyntaxTree
-from .actions import *
+from asdl.asdl import ASDLCompositeType
+from asdl.asdl_ast import AbstractSyntaxTree
+from asdl.actions import (ApplyRuleAction, GenTokenAction, ReduceAction)
 
 
 class Hypothesis(object):
