@@ -14,7 +14,7 @@ dependencies = [
   "libclang",
   "nltk",
   "six",
-  "torch==1.6.0",
+  "torch==1.13.1",
   "transformers",
   "xgboost",
 ]
