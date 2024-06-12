@@ -26,7 +26,7 @@ batch_size=64
 max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm
-encoder='bert' # lstm or bert
+encoder='lstm' # lstm or bert
 lr_decay_after_epoch=15
 model_name=conala.${lstm}.hidden${hidden_size}.embed${embed_size}.action${action_embed_size}.field${field_embed_size}.type${type_embed_size}.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).glorot.par_state.seed${seed}
 
@@ -37,7 +37,7 @@ install -d ${decodes_dir}
 echo "**** Writing results to ${logs_dir}/${model_name}.log ****"
 echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
-python -u -m pdb exp.py \
+python -u exp.py \
     ${cuda} \
     --data_path ${data_dir} \
     --seed ${seed} \

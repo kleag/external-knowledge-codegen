@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+logs_dir="logs/conala"
+model_dir="saved_models/conala"
+decodes_dir="decodes/conala"
+data_dir="data/conala"
+install -d ${decodes_dir}
+install -d ${logs_dir}
+install -d ${model_dir}
+install -d ${data_dir}
+
 seed=0
 mined_num=50000
 ret_method=$1

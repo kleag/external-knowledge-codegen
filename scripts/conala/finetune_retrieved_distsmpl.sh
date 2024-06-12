@@ -1,12 +1,22 @@
 #!/bin/bash
 set -e
 
+logs_dir="logs/conala"
+model_dir="saved_models/conala"
+decodes_dir="decodes/conala"
+data_dir="data/conala"
+install -d ${decodes_dir}
+install -d ${logs_dir}
+install -d ${model_dir}
+install -d ${data_dir}
+
 seed=0
 mined_num=$1
 ret_method=$2
 pretrained_model_name=$3
 freq=3
-vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.goldmine_${ret_method}.bin"
+# vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.goldmine_${ret_method}.bin"
+vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.bin"
 finetune_file="data/conala/train.var_str_sep.bin"
 dev_file="data/conala/dev.bin"
 dropout=0.3
@@ -56,6 +66,7 @@ python -u exp.py \
     --max_epoch 80 \
     --beam_size ${beam_size} \
     --log_every 50 \
+    --save_decode_to ${decodes_dir}/${model_name}.decode \
     --save_to saved_models/conala/${model_name} 2>&1 | tee logs/conala/${model_name}.log
 echo "Testing after finetuning"
 . scripts/conala/test.sh saved_models/conala/${model_name}.bin 2>&1 | tee -a logs/conala/${model_name}.log

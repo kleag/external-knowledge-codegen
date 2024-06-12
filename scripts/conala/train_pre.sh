@@ -1,12 +1,23 @@
 #!/bin/bash
-set -e
+set -o errexit
+set -o pipefail
+set -o nounset
+
+logs_dir="logs/conala"
+model_dir="saved_models/conala"
+decodes_dir="decodes/conala"
+data_dir="data/conala"
+install -d ${decodes_dir}
+install -d ${logs_dir}
+install -d ${model_dir}
+install -d ${data_dir}
 
 seed=0
 mined_num=$1
-freq=${2:-3}
-vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.bin"
-train_file="data/conala/pre_${mined_num}.bin"
-dev_file="data/conala/dev.bin"
+freq=$2
+vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.api_all.bin"
+train_file="${data_dir}/mined_100000_api_all.bin"
+dev_file="${data_dir}/dev.bin"
 dropout=0.3
 hidden_size=256
 embed_size=128
@@ -15,19 +26,18 @@ field_embed_size=64
 type_embed_size=64
 lr=0.001
 lr_decay=0.5
-batch_size=64
+batch_size=32
 max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm
 lr_decay_after_epoch=15
 model_name=conala.${lstm}.hidden${hidden_size}.embed${embed_size}.action${action_embed_size}.field${field_embed_size}.type${type_embed_size}.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).glorot.par_state.seed${seed}
 
-echo "**** Writing results to logs/conala/${model_name}.log ****"
-mkdir -p logs/conala
-echo commit hash: `git rev-parse HEAD` > logs/conala/${model_name}.log
+echo "**** Writing results to ${logs_dir}/${model_name}.log ****"
+echo commit hash: `git rev-parse HEAD` > ${logs_dir}/${model_name}.log
 
+#     --cuda \
 python -u exp.py \
-    --cuda \
     --seed ${seed} \
     --mode train \
     --batch_size ${batch_size} \
@@ -55,6 +65,7 @@ python -u exp.py \
     --max_epoch ${max_epoch} \
     --beam_size ${beam_size} \
     --log_every 50 \
-    --save_to saved_models/conala/${model_name} 2>&1 | tee logs/conala/${model_name}.log
+    --save_decode_to ${decodes_dir}/${model_name}.decode \
+    --save_to ${model_dir}/${model_name} 2>&1 | tee ${logs_dir}/${model_name}.log
 
-. scripts/conala/test.sh saved_models/conala/${model_name}.bin 2>&1 | tee -a logs/conala/${model_name}.log
+. scripts/conala/test.sh ${model_dir}/${model_name}.bin 2>&1 | tee -a ${logs_dir}/${model_name}.log
