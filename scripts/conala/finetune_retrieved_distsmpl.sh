@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e
+set -o errexit
+set -o pipefail
+set -o nounset
 
 logs_dir="logs/conala"
 model_dir="saved_models/conala"
@@ -10,14 +12,16 @@ install -d ${logs_dir}
 install -d ${model_dir}
 install -d ${data_dir}
 
+
 seed=0
 mined_num=$1
 ret_method=$2
 pretrained_model_name=$3
 freq=3
 # vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.goldmine_${ret_method}.bin"
-vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.bin"
-finetune_file="data/conala/train.var_str_sep.bin"
+# vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.bin"
+vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.api_all.bin"
+finetune_file="data/conala/train.bin"
 dev_file="data/conala/dev.bin"
 dropout=0.3
 hidden_size=256

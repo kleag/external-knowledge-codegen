@@ -1,3 +1,5 @@
+*.debug
+slurm-*.out
 *.log
 logs/
 *swp
