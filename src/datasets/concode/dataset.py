@@ -58,7 +58,7 @@ def preprocess_concode_dataset(train_file,
     train_examples = preprocess_dataset(train_file,
                                         name='train',
                                         transition_system=transition_system,
-                                        num_examples=1000,
+                                        num_examples=num_examples,
                                         debug=debug,
                                         start_at=start_at,
                                         rewritten=rewritten)

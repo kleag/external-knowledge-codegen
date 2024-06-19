@@ -21,8 +21,12 @@ def decode(examples, model, args, verbose=False, **kwargs):
     count = 0
     for example in tqdm(examples, desc='Decoding', file=sys.stdout,
                         total=len(examples)):
-        hyps = model.parse(example.src_sent, context=None,
-                           beam_size=args.beam_size)
+        if args.decoder == "beam_search":
+            hyps = model.parse(example.src_sent, context=None,
+                            beam_size=args.beam_size)
+        elif args.decoder == "nucleus_sampling":
+            hyps = model.parse_nucleus(example.src_sent, context=None,
+                                       p=args.top_p, debug=args.debug)
         decoded_hyps = []
         for hyp_id, hyp in enumerate(hyps):
             got_code = False
