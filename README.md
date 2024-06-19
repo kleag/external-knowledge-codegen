@@ -28,6 +28,9 @@ Performance comparison of different strategies to incorporate external knowledge
 ![](doc/result.png)
 
 
+Reproduced on https://github.com/kleag/external-knowledge-codegen:
+
+
 ## Prepare Environment
 We recommend using `conda` to manage the environment:
 ```
@@ -91,8 +94,8 @@ All related operations are in `datasets/conala/dataset.py`.
 For our best performing experiment, with is mined (top 100K) + API (dist. resampled w/ code, k = 1 and t = 2), run the following to create the dataset:
 
 ```
-python datasets/conala/dataset.py --pretrain data/conala/conala-mined.jsonl --topk 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl
-```
+#python datasets/conala/dataset.py --pretrain data/conala/conala-mined.jsonl --topk 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl
+python src/datasets/conala/dataset.py --mined data/conala/conala-mined.jsonl --num_mined 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl --tokenizer nltk```
 
 By default things should be preprocessed and saved to `data/conala`. Check out those `.bin` files.
 
@@ -160,7 +163,13 @@ http://<IP Address>:8081/parse/conala/<utterance>
 # e.g., http://localhost:8081/parse/conala/reverse a list
 ```
 
+## Experiments with LLM
 
+### Dataset preparation:
+
+```
+python src/datasets/conala/dataset.py --mined data/conala-llm/conala-mined.jsonl --num_mined 100000 --include_api apidocs/processed/distsmpl/snippet_15k/goldmine_snippet_count100k_topk1_temp2.jsonl --tokenizer nltk --no_rewritten --out-dir data/conala-llm --train data/conala-llm/conala-train.json --test data/conala-llm/conala-test.json  --intent snippet
+```
 
 ## Reference
 ```

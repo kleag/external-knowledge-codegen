@@ -31,6 +31,8 @@ def preprocess_conala_dataset(train_file: str,
                               test_file: str,
                               grammar_file: str,
                               tokenizer: str,
+                              intent: str,
+                              out_dir: str,
                               src_freq: int = 3,
                               code_freq: int = 3,
                               rewritten: bool = True,
@@ -42,7 +44,7 @@ def preprocess_conala_dataset(train_file: str,
                               num_dev: int = 200,
                               debug: bool = False,
                               start_at: int = 0,
-                              out_dir: str = 'data/conala'):
+                              max_intent_length: int = 256):
     np.random.seed(1234)
     try:
         os.makedirs(out_dir)
@@ -59,11 +61,13 @@ def preprocess_conala_dataset(train_file: str,
     train_examples = preprocess_dataset(train_file,
                                         name='train',
                                         tokenizer=tokenizer,
+                                        intent=intent,
                                         transition_system=transition_system,
                                         num_examples=num_examples,
                                         debug=debug,
                                         start_at=start_at,
-                                        rewritten=rewritten)
+                                        rewritten=rewritten,
+                                        max_intent_length=max_intent_length)
 
     # full_train_examples = train_examples[:]
     # held out 200 examples for development after shuffling
@@ -79,11 +83,13 @@ def preprocess_conala_dataset(train_file: str,
         mined_examples = preprocess_dataset(mined_data_file,
                                             name='mined',
                                             tokenizer=tokenizer,
+                                            intent=intent,
                                             transition_system=transition_system,
                                             num_examples=num_mined,
                                             debug=debug,
                                             start_at=start_at,
-                                            rewritten=rewritten)
+                                            rewritten=rewritten,
+                                            max_intent_length=max_intent_length)
         np.random.shuffle(mined_examples)
         pickle.dump(mined_examples,
                     open(os.path.join(out_dir, f'mined_{num_mined}.bin'),
@@ -96,10 +102,12 @@ def preprocess_conala_dataset(train_file: str,
         api_examples = preprocess_dataset(api_data_file,
                                           name='api',
                                           tokenizer=tokenizer,
+                                          intent=intent,
                                           transition_system=transition_system,
                                           debug=debug,
                                           start_at=start_at,
-                                          rewritten=rewritten)
+                                          rewritten=rewritten,
+                                          max_intent_length=max_intent_length)
         np.random.shuffle(api_examples)
         pickle.dump(api_examples,
                     open(os.path.join(out_dir, f'{name}.bin'), 'wb'))
@@ -124,8 +132,10 @@ def preprocess_conala_dataset(train_file: str,
     test_examples = preprocess_dataset(test_file,
                                        name='test',
                                        tokenizer=tokenizer,
+                                       intent=intent,
                                        transition_system=transition_system,
-                                       rewritten=rewritten)
+                                       rewritten=rewritten,
+                                       max_intent_length=max_intent_length)
     print(f'{len(test_examples)} test instances', file=sys.stderr)
 
     src_vocab = VocabEntry.from_corpus(
@@ -189,11 +199,13 @@ def preprocess_conala_dataset(train_file: str,
 def preprocess_dataset(file_path: str,
                        transition_system: Python3TransitionSystem,
                        tokenizer: str,
+                       intent: str,
                        name: str = 'train',
                        num_examples: int = None,
                        debug: bool = False,
                        start_at: int = 0,
-                       rewritten: bool = True):
+                       rewritten: bool = True,
+                       max_intent_length: int = 256):
     try:
         dataset = json.load(open(file_path))
     except Exception as e:
@@ -212,9 +224,16 @@ def preprocess_dataset(file_path: str,
         try:
             example_dict = preprocess_example(example_json,
                                               tokenizer,
-                                              rewritten=rewritten)
+                                              rewritten=rewritten,
+                                              intent=intent)
 
             snippet = example_dict['canonical_snippet']
+            if len(example_dict['intent_tokens']) > max_intent_length:
+                print(f"preprocess_dataset, skip example {i}, "
+                      f"{example_json['id']}. "
+                      f"snippet size = {len(example_dict['intent_tokens'])}",
+                      file=sys.stderr)
+                continue
             # if debug:
             #     print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
 
@@ -279,6 +298,10 @@ def preprocess_dataset(file_path: str,
         except (AssertionError, SyntaxError, ValueError, OverflowError) as e:
             skipped_list.append(example_json['question_id'])
             continue
+        if not (len(example_dict['intent_tokens']) > 0
+                and len(tgt_action_infos) > 0):
+            skipped_list.append(example_json['question_id'])
+            continue
         example = Example(idx=f'{i}-{example_json["question_id"]}',
                           src_sent=example_dict['intent_tokens'],
                           tgt_actions=tgt_action_infos,
@@ -297,7 +320,7 @@ def preprocess_dataset(file_path: str,
                     f"{example.meta['example_dict']['rewritten_intent']}\n")
         else:
             f.write(f"Original Utterance: "
-                    f"{example.meta['example_dict']['intent']}\n")
+                    f"{example.meta['example_dict']['snippet']}\n")
         f.write(f"Original Snippet: "
                 f"{example.meta['example_dict']['snippet']}\n")
         f.write(f"\n")
@@ -312,8 +335,16 @@ def preprocess_dataset(file_path: str,
 
 def preprocess_example(example_json: str,
                        tokenizer: str,
-                       rewritten: bool = True):
-    intent = example_json['intent']
+                       intent: str,
+                       rewritten: bool = True,
+                       ):
+    """
+    intent: which key from example to use as intent. Usually 'intent' but can
+            be 'snippet' when working with generated code as input
+    """
+    # intent = example_json['intent']
+    # intent = example_json['snippet']
+    intent = example_json[intent]
     if rewritten and 'rewritten_intent' in example_json:
         rewritten_intent = example_json['rewritten_intent']
     else:
@@ -346,14 +377,19 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     # ### General configuration ####
     arg_parser.add_argument('--train', type=str, help='Path to train file',
-                            default='data/conala/conala-train.json')
+                            required=True,
+                            # default='data/conala-llm/conala-train.json'
+                            )
     arg_parser.add_argument('--test', type=str, help='Path to test file',
-                            default='data/conala/conala-test.json')
+                            required=True,
+                            # default='data/conala-llm/conala-test.json'
+                            )
     arg_parser.add_argument('--mined', type=str, help='Path to mined file')
     arg_parser.add_argument('--grammar', type=str,
                             help='Path to language grammar',
                             default='src/asdl/lang/py3/py3_asdl.simplified.txt')
-    arg_parser.add_argument('--out_dir', type=str, default='data/conala',
+    arg_parser.add_argument('--out-dir', type=str, required=True,
+                            # default='data/conala-llm',
                             help='Path to output file')
     arg_parser.add_argument('--freq', type=int, default=3,
                             help='minimum frequency of tokens')
@@ -367,12 +403,19 @@ if __name__ == '__main__':
     arg_parser.add_argument('--tokenizer', type=str, required=True,
                             choices=['nltk', 'bert', 'spacy', 'lima'],
                             help='The tokenizer to use.')
+    arg_parser.add_argument(
+        '--intent', type=str, required=True,
+        help=("Which key from example to use as intent. Usually 'intent' but "
+            "can be 'snippet' when working with generated code as input."))
     arg_parser.add_argument('--num_examples', type=int, default=0,
                             help='Max number of examples to use in any set')
     arg_parser.add_argument('--num_dev', type=int, default=200,
                             help='Max number of dev examples to use')
     arg_parser.add_argument('--num_mined', type=int, default=0,
                             help='First k number from mined file')
+    arg_parser.add_argument(
+        '--max-intent-length', type=int, default=256,
+        help='Filter out examples with intent length greater than this.')
     arg_parser.add_argument('-d', '--debug', action='store_true',
                             help='Run in debug mode if set.')
     args = arg_parser.parse_args()
@@ -392,4 +435,6 @@ if __name__ == '__main__':
                               out_dir=args.out_dir,
                               rewritten=args.no_rewritten,
                               tokenizer=args.tokenizer,
-                              debug=args.debug)
+                              intent=args.intent,
+                              debug=args.debug,
+                              max_intent_length=args.max_intent_length)
