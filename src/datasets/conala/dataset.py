@@ -180,8 +180,12 @@ def preprocess_dataset(file_path: str,
         try:
             example_dict = preprocess_example(example_json,
                                               tokenizer,
-                                              rewritten=rewritten)
+                                              name,
+                                              rewritten=rewritten,)
+        except Exception as e:
+            print(f"Error preprocessing exmaple: {e}")
 
+        try:
             snippet = example_dict['canonical_snippet']
             # if debug:
             #     print(f"canonical_snippet:\n{snippet}", file=sys.stderr)
@@ -236,6 +240,10 @@ def preprocess_dataset(file_path: str,
 
             tgt_action_infos = get_action_infos(example_dict['intent_tokens'], tgt_actions)
         except (AssertionError, SyntaxError, ValueError, OverflowError) as e:
+            print("======================")
+            print(type(e))
+            print(e)
+            print(example_json)
             skipped_list.append(example_json['question_id'])
             continue
         example = Example(idx=f'{i}-{example_json["question_id"]}',
@@ -268,7 +276,18 @@ def preprocess_dataset(file_path: str,
 
 def preprocess_example(example_json: str,
                        tokenizer: str,
+                       name : str,
                        rewritten: bool = True):
+    """ Preprocess a single example from the Conala dataset.
+    Args:
+        example_json (str): example to preprocess
+        tokenizer (str): tokenizer to use : nltk, spacy, bert, lima, starcoder
+        name (str): mode train/test
+        rewritten (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        Example: preprocessed example
+    """
     intent = example_json['intent']
     if rewritten and 'rewritten_intent' in example_json:
         rewritten_intent = example_json['rewritten_intent']
@@ -277,6 +296,16 @@ def preprocess_example(example_json: str,
 
     if not rewritten or rewritten_intent is None:
         rewritten_intent = intent
+    with open(os.path.join("data", "conala", "llm_output", f"conala-{name}.jsonl")) as f:
+        data = [json.loads(line) for line in f]
+        found = False
+        for line in data:
+            if line['text'] == rewritten_intent or line['text'] == intent:
+                rewritten_intent = line['code']
+                found = True
+                break
+        assert found, f"Could not find the code for the intent {rewritten_intent}"
+
     snippet = example_json['snippet']
 
     canonical_intent, slot_map = canonicalize_intent(rewritten_intent
@@ -319,7 +348,7 @@ if __name__ == '__main__':
                             help='If set, will not use the manually rewritten '
                                  'intents.')
     arg_parser.add_argument('--tokenizer', type=str, required=True,
-                            choices=['nltk', 'bert', 'spacy', 'lima'],
+                            choices=['nltk', 'bert', 'spacy', 'lima', 'starcoder'],
                             help='The tokenizer to use.')
     arg_parser.add_argument('--num_examples', type=int, default=0,
                             help='Max number of examples to use in any set')

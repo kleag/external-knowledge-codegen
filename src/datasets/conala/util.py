@@ -7,8 +7,7 @@ import re
 import ast
 import astor
 import nltk
-
-from transformers import BertTokenizer
+from transformers import BertTokenizer, AutoTokenizer
 
 
 QUOTED_TOKEN_RE = re.compile(r"(?P<quote>''|[`'\"])(?P<string>.*?)(?P=quote)")
@@ -55,6 +54,17 @@ def tokenize_intent(intent: str, tokenizer: str):
             return_attention_mask=False
         )
         breakpoint()
+        tokens = encoded_input["input_ids"]
+    elif tokenizer == 'starcoder':  # Add this branch for the starcoder tokenizer
+        starcoder_tokenizer = AutoTokenizer.from_pretrained('starcoder-path-or-model-name')
+        encoded_input = starcoder_tokenizer(
+            text=intent,
+            add_special_tokens=True,
+            padding="max_length",
+            max_length=256,
+            truncation=True,
+            return_attention_mask=False
+        )
         tokens = encoded_input["input_ids"]
     elif tokenizer == 'spacy':
         raise NotImplementedError("Spacy tokenization not implemented")
