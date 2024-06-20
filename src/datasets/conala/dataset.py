@@ -219,6 +219,7 @@ def preprocess_dataset(file_path: str,
     skipped_list = []
     for i, example_json in enumerate(tqdm(dataset,
                                           desc=f"preprocess {name}")):
+        print(example_json)
         if i < start_at:
             continue
         try:
@@ -228,7 +229,7 @@ def preprocess_dataset(file_path: str,
                                               rewritten=rewritten,
                                               intent=intent)
         except Exception as e:
-            print(f"Error preprocessing exmaple: {e}")
+            print(f"Error preprocessing example: {type(e)} {e}")
                                            
 
         try:
@@ -345,7 +346,7 @@ def preprocess_dataset(file_path: str,
 def preprocess_example(example_json: str,
                        tokenizer: str,
                        name : str,
-                    #    intent : str
+                       intent : str,
                        rewritten: bool = True):
     """ Preprocess a single example from the Conala dataset.
     Args:
@@ -369,7 +370,7 @@ def preprocess_example(example_json: str,
         data = [json.loads(line) for line in f]
         found = False
         for line in data:
-            if line['text'] == rewritten_intent or line['text'] == intent:
+            if rewritten_intent in line['text'] or intent in line['text']:
                 rewritten_intent = line['code']
                 found = True
                 break

@@ -56,7 +56,8 @@ def tokenize_intent(intent: str, tokenizer: str):
         breakpoint()
         tokens = encoded_input["input_ids"]
     elif tokenizer == 'starcoder':  # Add this branch for the starcoder tokenizer
-        starcoder_tokenizer = AutoTokenizer.from_pretrained('starcoder-path-or-model-name')
+        starcoder_tokenizer = AutoTokenizer.from_pretrained('bigcode/starcoder2-15b-instruct-v0.1')
+        starcoder_tokenizer.pad_token = starcoder_tokenizer.eos_token
         encoded_input = starcoder_tokenizer(
             text=intent,
             add_special_tokens=True,
