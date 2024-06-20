@@ -1,4 +1,5 @@
 import csv
+import os
 import sys
 
 from components.evaluator import Evaluator
@@ -46,10 +47,6 @@ class ConcodeEvaluator(Evaluator):
 
     def evaluate_dataset(self, dataset, decode_results, fast_mode=False,
                          args=None):
-        output_plaintext_file = None
-        if args and args.save_decode_to:
-            output_plaintext_file = open(args.save_decode_to + '.txt', 'w',
-                                         encoding='utf-8')
         examples = (dataset.examples
                     if isinstance(dataset, Dataset) else dataset)
         assert len(examples) == len(decode_results)
@@ -103,6 +100,12 @@ class ConcodeEvaluator(Evaluator):
             sent_bleu_scores = []
             oracle_bleu_scores = []
             oracle_exact_match = []
+            output_plaintext_file = None
+            if args and args.save_decode_to:
+                file_path = args.save_decode_to + '.txt'
+                directory = os.path.dirname(file_path)
+                os.makedirs(directory, exist_ok=True)
+                output_plaintext_file = open(file_path, 'w', encoding='utf-8')
             for example, hyp_list in zip(examples, decode_results):
                 tokenized_ref_snippets.append(example.reference_code_tokens)
                 example_hyp_bleu_scores = []
@@ -137,6 +140,7 @@ class ConcodeEvaluator(Evaluator):
                 sent_bleu_scores.append(sent_bleu_score)
                 oracle_bleu_scores.append(oracle_sent_bleu)
                 best_hyp_code_tokens.append(_best_hyp_code_tokens)
+            output_plaintext_file.close()
 
             bleu_tup = compute_bleu([[x] for x in tokenized_ref_snippets],
                                     hyp_code_tokens, smooth=False)

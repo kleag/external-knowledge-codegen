@@ -25,6 +25,8 @@ def init_arg_parser():
     arg_parser = argparse.ArgumentParser()
 
     # ### General configuration ####
+    arg_parser.add_argument('--debug', default=False, action='store_true',
+                            help='Debugging mode')
     arg_parser.add_argument('--fine_tuning', default=False, action='store_true',
                             help='Are we at the fine tuning step')
     arg_parser.add_argument('--seed', default=0, type=int, help='Random seed')
@@ -185,6 +187,11 @@ def init_arg_parser():
 
     #### decoding/validation/testing ####
     arg_parser.add_argument('--load_model', default=None, type=str, help='Load a pre-trained model')
+    arg_parser.add_argument('--decoder', default="beam_search", type=str,
+                            choices=['beam_search', 'nucleus_sampling'],
+                            help='chose a decoding algorithm')
+    arg_parser.add_argument('--top-p', default="0.9", type=float,
+                            help='Top-p value for nucleus sampling decoder')
     arg_parser.add_argument('--beam_size', default=5, type=int, help='Beam size for beam search')
     arg_parser.add_argument('--decode_max_time_step', default=100, type=int, help='Maximum number of time steps used '
                                                                                   'in decoding and sampling')

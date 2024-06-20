@@ -3,16 +3,24 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+logs_dir="logs/conala"
+model_dir="saved_models/conala"
+decodes_dir="decodes/conala"
+data_dir="data/conala"
+install -d ${decodes_dir}
+install -d ${logs_dir}
+install -d ${model_dir}
+install -d ${data_dir}
+
 seed=0
 mined_num=$1
 # ret_method=$2
+pretrained_model_name=$2
 freq=3
-# vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.goldmine_${ret_method}.bin"
-# train_file="data/conala/pre_${mined_num}_goldmine_${ret_method}.bin"
-vocab="data/conala/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.python-docs.bin"
-train_file="data/conala/pre_${mined_num}_python-docs.bin"
-
-dev_file="data/conala/dev.bin"
+# vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.goldmine_${ret_method}.bin"
+vocab="${data_dir}/vocab.src_freq${freq}.code_freq${freq}.mined_${mined_num}.bin"
+finetune_file="${data_dir}/pre_50000_python-docs.bin"
+dev_file="${data_dir}/dev.bin"
 dropout=0.3
 hidden_size=256
 embed_size=128
@@ -21,27 +29,27 @@ field_embed_size=64
 type_embed_size=64
 lr=0.001
 lr_decay=0.5
-batch_size=64
-max_epoch=80
 beam_size=15
 lstm='lstm'  # lstm
 lr_decay_after_epoch=15
-model_name=retdistsmpl.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.$(basename ${vocab}).$(basename ${train_file}).seed${seed}
+# model_name=finetune.mined.retapi.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.seed${seed}.mined_${mined_num}.${ret_method}5
+model_name=finetune.mined.retapi.dr${dropout}.lr${lr}.lr_de${lr_decay}.lr_da${lr_decay_after_epoch}.beam${beam_size}.seed${seed}.mined_${mined_num}
 
 echo "**** Writing results to logs/conala/${model_name}.log ****"
 mkdir -p logs/conala
-#echo commit hash: `git rev-parse HEAD` > logs/conala/${model_name}.log
+echo commit hash: "$(git rev-parse HEAD)" > logs/conala/"${model_name}".log
 
 #     --cuda \
 python -u exp.py \
     --seed ${seed} \
     --mode train \
-    --batch_size ${batch_size} \
+    --batch_size 10 \
     --evaluator conala_evaluator \
     --asdl_file src/asdl/lang/py3/py3_asdl.simplified.txt \
     --transition_system python3 \
-    --train_file ${train_file} \
+    --train_file ${finetune_file} \
     --dev_file ${dev_file} \
+    --pretrain ${pretrained_model_name} \
     --vocab ${vocab} \
     --lstm ${lstm} \
     --no_parent_field_type_embed \
@@ -58,7 +66,7 @@ python -u exp.py \
     --lr ${lr} \
     --lr_decay ${lr_decay} \
     --lr_decay_after_epoch ${lr_decay_after_epoch} \
-    --max_epoch ${max_epoch} \
+    --max_epoch 80 \
     --beam_size ${beam_size} \
     --log_every 50 \
     --save_to saved_models/conala/${model_name} 2>&1 | tee logs/conala/${model_name}.log
